@@ -4,6 +4,8 @@ enum ViewerTool { pan, zoom, windowLevel, distance, angle, crosshair }
 
 enum ViewportLayout { single, quad }
 
+enum ActiveViewport { axial, sagittal, coronal, volume3d }
+
 enum ImportStatus { idle, selecting, importing, completed, failed }
 
 class ViewerState {
@@ -14,6 +16,7 @@ class ViewerState {
     this.skippedFiles = const [],
     this.accessIssues = const [],
     this.layout = ViewportLayout.quad,
+    this.activeViewport = ActiveViewport.axial,
     this.activeTool = ViewerTool.windowLevel,
     this.windowCenter = 512,
     this.windowWidth = 1024,
@@ -29,6 +32,7 @@ class ViewerState {
   final List<DicomImportFailure> skippedFiles;
   final List<String> accessIssues;
   final ViewportLayout layout;
+  final ActiveViewport activeViewport;
   final ViewerTool activeTool;
   final double windowCenter;
   final double windowWidth;
@@ -84,6 +88,10 @@ class ViewerState {
     return series.instances[clampedIndex];
   }
 
+  int get selectedSeriesInstanceCount {
+    return selectedSeries?.instances.length ?? 0;
+  }
+
   ViewerState copyWith({
     String? selectedStudyId,
     String? selectedSeriesId,
@@ -91,6 +99,7 @@ class ViewerState {
     List<DicomImportFailure>? skippedFiles,
     List<String>? accessIssues,
     ViewportLayout? layout,
+    ActiveViewport? activeViewport,
     ViewerTool? activeTool,
     double? windowCenter,
     double? windowWidth,
@@ -106,6 +115,7 @@ class ViewerState {
       skippedFiles: skippedFiles ?? this.skippedFiles,
       accessIssues: accessIssues ?? this.accessIssues,
       layout: layout ?? this.layout,
+      activeViewport: activeViewport ?? this.activeViewport,
       activeTool: activeTool ?? this.activeTool,
       windowCenter: windowCenter ?? this.windowCenter,
       windowWidth: windowWidth ?? this.windowWidth,

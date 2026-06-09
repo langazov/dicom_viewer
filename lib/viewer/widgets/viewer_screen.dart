@@ -33,6 +33,12 @@ class _ViewerScreenState extends State<ViewerScreen> {
     });
   }
 
+  void _setActiveViewport(ActiveViewport viewport) {
+    setState(() {
+      _state = _state.copyWith(activeViewport: viewport);
+    });
+  }
+
   void _setTool(ViewerTool tool) {
     setState(() {
       _state = _state.copyWith(activeTool: tool);
@@ -46,6 +52,17 @@ class _ViewerScreenState extends State<ViewerScreen> {
         sliceIndex: 0,
         importMessage: 'Loaded selected series.',
       );
+    });
+  }
+
+  void _setSliceIndex(int sliceIndex) {
+    final maxIndex = _state.selectedSeriesInstanceCount - 1;
+    if (maxIndex < 0) {
+      return;
+    }
+
+    setState(() {
+      _state = _state.copyWith(sliceIndex: sliceIndex.clamp(0, maxIndex));
     });
   }
 
@@ -154,7 +171,12 @@ class _ViewerScreenState extends State<ViewerScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth < 720) {
-            return _PhoneWorkspace(state: _state, onToolChanged: _setTool);
+            return _PhoneWorkspace(
+              state: _state,
+              onToolChanged: _setTool,
+              onSliceChanged: _setSliceIndex,
+              onViewportSelected: _setActiveViewport,
+            );
           }
 
           if (constraints.maxWidth < 1040) {
@@ -162,6 +184,8 @@ class _ViewerScreenState extends State<ViewerScreen> {
               state: _state,
               onToolChanged: _setTool,
               onSeriesSelected: _selectSeries,
+              onSliceChanged: _setSliceIndex,
+              onViewportSelected: _setActiveViewport,
             );
           }
 
@@ -169,6 +193,8 @@ class _ViewerScreenState extends State<ViewerScreen> {
             state: _state,
             onToolChanged: _setTool,
             onSeriesSelected: _selectSeries,
+            onSliceChanged: _setSliceIndex,
+            onViewportSelected: _setActiveViewport,
           );
         },
       ),
@@ -181,11 +207,15 @@ class _DesktopWorkspace extends StatelessWidget {
     required this.state,
     required this.onToolChanged,
     required this.onSeriesSelected,
+    required this.onSliceChanged,
+    required this.onViewportSelected,
   });
 
   final ViewerState state;
   final ValueChanged<ViewerTool> onToolChanged;
   final ValueChanged<String> onSeriesSelected;
+  final ValueChanged<int> onSliceChanged;
+  final ValueChanged<ActiveViewport> onViewportSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -202,7 +232,13 @@ class _DesktopWorkspace extends StatelessWidget {
                 ),
               ),
               const VerticalDivider(width: 1),
-              Expanded(child: ViewportGrid(state: state)),
+              Expanded(
+                child: ViewportGrid(
+                  state: state,
+                  onSliceChanged: onSliceChanged,
+                  onViewportSelected: onViewportSelected,
+                ),
+              ),
               const VerticalDivider(width: 1),
               SizedBox(
                 width: 320,
@@ -217,7 +253,7 @@ class _DesktopWorkspace extends StatelessWidget {
             ],
           ),
         ),
-        StatusBar(state: state),
+        StatusBar(state: state, onSliceChanged: onSliceChanged),
       ],
     );
   }
@@ -228,11 +264,15 @@ class _TabletWorkspace extends StatelessWidget {
     required this.state,
     required this.onToolChanged,
     required this.onSeriesSelected,
+    required this.onSliceChanged,
+    required this.onViewportSelected,
   });
 
   final ViewerState state;
   final ValueChanged<ViewerTool> onToolChanged;
   final ValueChanged<String> onSeriesSelected;
+  final ValueChanged<int> onSliceChanged;
+  final ValueChanged<ActiveViewport> onViewportSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -241,7 +281,13 @@ class _TabletWorkspace extends StatelessWidget {
         Expanded(
           child: Row(
             children: [
-              Expanded(child: ViewportGrid(state: state)),
+              Expanded(
+                child: ViewportGrid(
+                  state: state,
+                  onSliceChanged: onSliceChanged,
+                  onViewportSelected: onViewportSelected,
+                ),
+              ),
               const VerticalDivider(width: 1),
               SizedBox(
                 width: 280,
@@ -261,29 +307,42 @@ class _TabletWorkspace extends StatelessWidget {
             ],
           ),
         ),
-        StatusBar(state: state),
+        StatusBar(state: state, onSliceChanged: onSliceChanged),
       ],
     );
   }
 }
 
 class _PhoneWorkspace extends StatelessWidget {
-  const _PhoneWorkspace({required this.state, required this.onToolChanged});
+  const _PhoneWorkspace({
+    required this.state,
+    required this.onToolChanged,
+    required this.onSliceChanged,
+    required this.onViewportSelected,
+  });
 
   final ViewerState state;
   final ValueChanged<ViewerTool> onToolChanged;
+  final ValueChanged<int> onSliceChanged;
+  final ValueChanged<ActiveViewport> onViewportSelected;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Expanded(child: ViewportGrid(state: state)),
+        Expanded(
+          child: ViewportGrid(
+            state: state,
+            onSliceChanged: onSliceChanged,
+            onViewportSelected: onViewportSelected,
+          ),
+        ),
         const Divider(height: 1),
         SizedBox(
           height: 132,
           child: ToolPanel(state: state, onToolChanged: onToolChanged),
         ),
-        StatusBar(state: state),
+        StatusBar(state: state, onSliceChanged: onSliceChanged),
       ],
     );
   }

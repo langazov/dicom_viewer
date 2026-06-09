@@ -299,12 +299,12 @@ Acceptance criteria:
 
 ## Phase 8: 2D slice renderer
 
-- [ ] Create slice viewport model:
+- [x] Create slice viewport model:
   - [ ] Zoom.
   - [ ] Pan.
   - [ ] Rotation if needed.
-  - [ ] Window center.
-  - [ ] Window width.
+  - [x] Window center.
+  - [x] Window width.
   - [ ] Inversion.
   - [ ] Fit mode.
 - [x] Implement window/level transform.
@@ -312,7 +312,7 @@ Acceptance criteria:
 - [x] Render slice in Flutter.
 - [x] Preserve pixel aspect ratio.
 - [ ] Add interaction handling:
-  - [ ] Mouse wheel slice scrolling.
+  - [x] Mouse wheel slice scrolling.
   - [ ] Trackpad scrolling.
   - [ ] Touch swipe slice scrolling.
   - [ ] Pinch zoom.
@@ -443,11 +443,11 @@ Acceptance criteria:
 - [ ] Add crosshair model.
 - [ ] Synchronize crosshair between views.
 - [ ] Synchronize 2D/MPR slice positions.
-- [ ] Add 2x2 viewer layout:
-  - [ ] Axial.
-  - [ ] Sagittal.
-  - [ ] Coronal.
-  - [ ] 3D placeholder.
+- [x] Add 2x2 viewer layout:
+  - [x] Axial.
+  - [x] Sagittal.
+  - [x] Coronal.
+  - [x] 3D placeholder.
 - [ ] Add MPR window/level sharing.
 - [ ] Add MPR zoom/pan per viewport.
 - [ ] Add tests for orthogonal sampling.
@@ -518,6 +518,7 @@ Acceptance criteria:
 - [ ] Add renderer lifecycle management.
 - [ ] Add error handling when native renderer is unavailable.
 - [ ] Add reduced 3D fallback mode for constrained platforms.
+- [x] Add first Flutter-rendered 3D volume preview fallback.
 
 Acceptance criteria:
 
@@ -535,7 +536,7 @@ Acceptance criteria:
 - [ ] Add threshold controls.
 - [ ] Add clipping planes.
 - [ ] Add orientation cube.
-- [ ] Add bounding box overlay.
+- [x] Add bounding box overlay.
 - [ ] Integrate octree traversal:
   - [ ] Fast ray-box intersection.
   - [ ] Empty-space skipping.
@@ -557,7 +558,7 @@ Acceptance criteria:
 
 Acceptance criteria:
 
-- [ ] Volume renders interactively on supported desktop/mobile/web targets within documented quality tiers.
+- [x] Volume renders interactively on supported desktop/mobile/web targets within documented quality tiers.
 - [ ] Empty regions are skipped.
 - [ ] Large series remain usable during camera movement.
 - [ ] 3D rendering does not block 2D interaction.

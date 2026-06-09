@@ -29,7 +29,7 @@ void main() {
     expect(find.text('Test^Patient'), findsOneWidget);
     expect(find.text('Brain MRI'), findsOneWidget);
     expect(find.text('T1 axial'), findsOneWidget);
-    expect(find.textContaining('1 imported'), findsOneWidget);
+    expect(find.textContaining('2 imported'), findsOneWidget);
 
     await tester.tap(find.text('T1 axial'));
     await tester.pump();
@@ -39,6 +39,20 @@ void main() {
     await tester.pump();
 
     expect(find.byType(RawImage), findsOneWidget);
+    expect(find.textContaining('Slice 1/2'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Next slice'));
+    await tester.pump();
+
+    expect(find.textContaining('Slice 2/2'), findsOneWidget);
+
+    await tester.tap(find.text('3D'));
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.crop_square));
+    await tester.pumpAndSettle();
+
+    expect(find.text('3D'), findsOneWidget);
+    expect(find.text('Axial'), findsNothing);
 
     await tester.binding.setSurfaceSize(null);
   });
@@ -81,13 +95,17 @@ class _FakeImportRunner extends DicomImportRunner {
                   description: 'T1 axial',
                   modality: 'MR',
                   instances: [
-                    DicomInstance(
-                      sopClassUid: '1.2.840.10008.5.1.4.1.1.4',
+                    _instance(
                       sopInstanceUid: '1.2.3.4.5',
                       instanceNumber: 1,
                       filePath: sources.single.filePath,
-                      metadata: _metadata(),
-                      pixelDataBytes: _uint16Bytes([0, 64, 128, 255]),
+                      pixelValues: [0, 64, 128, 255],
+                    ),
+                    _instance(
+                      sopInstanceUid: '1.2.3.4.6',
+                      instanceNumber: 2,
+                      filePath: '/tmp/slice2.dcm',
+                      pixelValues: [255, 128, 64, 0],
                     ),
                   ],
                 ),
@@ -123,6 +141,22 @@ class _FakeImportRunner extends DicomImportRunner {
         photometricInterpretation: 'MONOCHROME2',
       ),
       transferSyntax: TransferSyntax.explicitVrLittleEndian,
+    );
+  }
+
+  DicomInstance _instance({
+    required String sopInstanceUid,
+    required int instanceNumber,
+    required String filePath,
+    required List<int> pixelValues,
+  }) {
+    return DicomInstance(
+      sopClassUid: '1.2.840.10008.5.1.4.1.1.4',
+      sopInstanceUid: sopInstanceUid,
+      instanceNumber: instanceNumber,
+      filePath: filePath,
+      metadata: _metadata(),
+      pixelDataBytes: _uint16Bytes(pixelValues),
     );
   }
 
