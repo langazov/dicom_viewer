@@ -2,6 +2,48 @@
 
 DICOM MRI scan viewer written in Flutter, with advanced 2D, MPR, and 3D visualization.
 
+## Development commands
+
+```sh
+dart format lib test
+flutter analyze
+flutter test
+flutter run -d macos
+flutter run -d chrome
+flutter run -d ios
+flutter run -d android
+flutter run -d windows
+flutter run -d linux
+```
+
+If macOS builds report that CocoaPods is installed but broken, check which `pod` is first on PATH:
+
+```sh
+which pod
+pod --version
+/opt/homebrew/bin/pod --version
+```
+
+On this machine, Homebrew CocoaPods works at `/opt/homebrew/bin/pod`, but an older Ruby gem shim appears earlier on PATH. Use this command until the shell PATH is cleaned up:
+
+```sh
+PATH=/opt/homebrew/bin:$PATH flutter run -d macos
+```
+
+## Sample data policy
+
+- Do not commit real patient DICOM studies.
+- Use only anonymized or public DICOM datasets for fixtures and screenshots.
+- Treat screenshots, logs, metadata exports, and generated thumbnails as potentially identifiable.
+- Keep imported DICOM data local by default.
+
+## Import support
+
+- Desktop builds support multi-file import and recursive folder import.
+- Mobile builds support document-picker based multi-file import. Shared-file/open-with handling is planned.
+- Web builds support browser file picker based multi-file import. Recursive folder import is limited by browser capabilities; use multi-file selection when folder access is unavailable.
+- Import parsing runs outside the UI flow and reports imported instances, skipped files, and platform access limitations in the viewer.
+
 ## Development plan
 
 ### 1. Core application

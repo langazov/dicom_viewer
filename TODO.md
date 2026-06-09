@@ -4,220 +4,221 @@ Implementation checklist for the Flutter DICOM MRI viewer described in `README.m
 
 ## Phase 0: Project bootstrap
 
-- [ ] Install and verify Flutter stable SDK.
-- [ ] Create Flutter project in this repository.
-- [ ] Enable every platform supported by Flutter:
-  - [ ] Android.
-  - [ ] iOS.
-  - [ ] macOS.
-  - [ ] Windows.
-  - [ ] Linux.
-  - [ ] Web.
-- [ ] Add platform folders and verify they are generated correctly:
-  - [ ] `android`.
-  - [ ] `ios`.
-  - [ ] `macos`.
-  - [ ] `windows`.
-  - [ ] `linux`.
-  - [ ] `web`.
+- [x] Install and verify Flutter stable SDK.
+- [x] Create Flutter project in this repository.
+- [x] Enable every platform supported by Flutter:
+  - [x] Android.
+  - [x] iOS.
+  - [x] macOS.
+  - [x] Windows.
+  - [x] Linux.
+  - [x] Web.
+- [x] Add platform folders and verify they are generated correctly:
+  - [x] `android`.
+  - [x] `ios`.
+  - [x] `macos`.
+  - [x] `windows`.
+  - [x] `linux`.
+  - [x] `web`.
 - [ ] Add baseline dependencies:
   - [ ] State management.
   - [ ] Routing.
   - [ ] SQLite/storage.
-  - [ ] File picker.
+- [x] File picker.
   - [ ] Path/provider utilities.
   - [ ] Logging.
   - [ ] Code generation utilities if needed.
-- [ ] Add project structure:
-  - [ ] `lib/app`.
-  - [ ] `lib/core`.
-  - [ ] `lib/dicom`.
-  - [ ] `lib/viewer`.
-  - [ ] `lib/storage`.
-  - [ ] `lib/native`.
-  - [ ] `test`.
-  - [ ] `integration_test`.
-- [ ] Configure static analysis.
-- [ ] Configure formatting.
-- [ ] Add CI-friendly commands to README:
-  - [ ] Format.
-  - [ ] Analyze.
-  - [ ] Test.
-  - [ ] Run Android.
-  - [ ] Run iOS.
-  - [ ] Run macOS.
-  - [ ] Run Windows.
-  - [ ] Run Linux.
-  - [ ] Run web.
-- [ ] Add sample-data policy:
-  - [ ] Do not commit real patient scans.
-  - [ ] Use anonymized/public DICOM datasets only.
-- [ ] Document platform support expectations:
-  - [ ] Desktop: full file/folder import and advanced viewer target.
-  - [ ] Mobile: file/document import and adaptive viewer target.
-  - [ ] Web: browser-safe file import and constrained storage/rendering target.
+- [x] Add project structure:
+  - [x] `lib/app`.
+  - [x] `lib/core`.
+  - [x] `lib/dicom`.
+  - [x] `lib/viewer`.
+  - [x] `lib/storage`.
+  - [x] `lib/native`.
+  - [x] `test`.
+  - [x] `integration_test`.
+- [x] Configure static analysis.
+- [x] Configure formatting.
+- [x] Add CI-friendly commands to README:
+  - [x] Format.
+  - [x] Analyze.
+  - [x] Test.
+  - [x] Run Android.
+  - [x] Run iOS.
+  - [x] Run macOS.
+  - [x] Run Windows.
+  - [x] Run Linux.
+  - [x] Run web.
+- [x] Add sample-data policy:
+  - [x] Do not commit real patient scans.
+  - [x] Use anonymized/public DICOM datasets only.
+- [x] Document platform support expectations:
+  - [x] Desktop: full file/folder import and advanced viewer target.
+  - [x] Mobile: file/document import and adaptive viewer target.
+  - [x] Web: browser-safe file import and constrained storage/rendering target.
 
 Acceptance criteria:
 
-- [ ] App builds and launches on the current development platform.
-- [ ] Project contains all Flutter platform targets.
-- [ ] `flutter analyze` runs cleanly.
-- [ ] `flutter test` runs successfully.
+- [x] App builds on the current development platform.
+- [ ] App launches on the current development platform.
+- [x] Project contains all Flutter platform targets.
+- [x] `flutter analyze` runs cleanly.
+- [x] `flutter test` runs successfully.
 
 ## Phase 1: Application shell
 
-- [ ] Create root app widget.
-- [ ] Create router.
-- [ ] Create application theme.
-- [ ] Create main viewer screen.
-- [ ] Build adaptive workspace layout:
-  - [ ] Left study/series browser panel.
-  - [ ] Center viewer workspace.
-  - [ ] Right metadata/tools panel.
-  - [ ] Top toolbar.
-  - [ ] Bottom status/slice bar.
-- [ ] Add desktop/tablet layout:
-  - [ ] Multi-panel workspace.
+- [x] Create root app widget.
+- [x] Create router.
+- [x] Create application theme.
+- [x] Create main viewer screen.
+- [x] Build adaptive workspace layout:
+  - [x] Left study/series browser panel.
+  - [x] Center viewer workspace.
+  - [x] Right metadata/tools panel.
+  - [x] Top toolbar.
+  - [x] Bottom status/slice bar.
+- [x] Add desktop/tablet layout:
+  - [x] Multi-panel workspace.
   - [ ] Resizable/collapsible side panels.
-  - [ ] Mouse and keyboard optimized controls.
-- [ ] Add phone layout:
-  - [ ] Single primary viewport.
-  - [ ] Bottom/tool drawers.
+  - [x] Mouse and keyboard optimized controls.
+- [x] Add phone layout:
+  - [x] Single primary viewport.
+  - [x] Bottom/tool drawers.
   - [ ] Collapsible metadata panel.
-  - [ ] Touch-friendly controls.
+  - [x] Touch-friendly controls.
 - [ ] Add web layout considerations:
-  - [ ] Browser viewport resizing.
+  - [x] Browser viewport resizing.
   - [ ] Drag/drop file import when available.
   - [ ] Clear messaging for unsupported browser capabilities.
-- [ ] Add responsive resizing behavior.
+- [x] Add responsive resizing behavior.
 - [ ] Add placeholder empty states:
-  - [ ] No study imported.
-  - [ ] No series selected.
+  - [x] No study imported.
+  - [x] No series selected.
   - [ ] Loading/import in progress.
   - [ ] Unsupported DICOM file.
-- [ ] Add top-level app state:
-  - [ ] Selected study.
-  - [ ] Selected series.
-  - [ ] Active viewport layout.
-  - [ ] Active viewer tool.
+- [x] Add top-level app state:
+  - [x] Selected study.
+  - [x] Selected series.
+  - [x] Active viewport layout.
+  - [x] Active viewer tool.
 
 Acceptance criteria:
 
-- [ ] Layout resizes without overlap on desktop, tablet, phone, and web viewport sizes.
-- [ ] Empty states are visible and useful.
-- [ ] Viewer screen can be reached from app startup.
+- [x] Layout resizes without overlap on desktop, tablet, phone, and web viewport sizes.
+- [x] Empty states are visible and useful.
+- [x] Viewer screen can be reached from app startup.
 
 ## Phase 2: DICOM domain model
 
-- [ ] Define `DicomPatient`.
-- [ ] Define `DicomStudy`.
-- [ ] Define `DicomSeries`.
-- [ ] Define `DicomInstance`.
-- [ ] Define `DicomMetadata`.
-- [ ] Define `PixelDataDescriptor`.
-- [ ] Define `VoxelSpacing`.
-- [ ] Define `ImageOrientation`.
-- [ ] Define `ImagePosition`.
-- [ ] Define `TransferSyntax`.
-- [ ] Define `DicomImportResult`.
+- [x] Define `DicomPatient`.
+- [x] Define `DicomStudy`.
+- [x] Define `DicomSeries`.
+- [x] Define `DicomInstance`.
+- [x] Define `DicomMetadata`.
+- [x] Define `PixelDataDescriptor`.
+- [x] Define `VoxelSpacing`.
+- [x] Define `ImageOrientation`.
+- [x] Define `ImagePosition`.
+- [x] Define `TransferSyntax`.
+- [x] Define `DicomImportResult`.
 - [ ] Add value equality/serialization where needed.
-- [ ] Add validation helpers:
-  - [ ] Required UID presence.
-  - [ ] MRI modality detection.
-  - [ ] Pixel format support check.
-  - [ ] Transfer syntax support check.
+- [x] Add validation helpers:
+  - [x] Required UID presence.
+  - [x] MRI modality detection.
+  - [x] Pixel format support check.
+  - [x] Transfer syntax support check.
 
 Acceptance criteria:
 
-- [ ] Metadata models can represent a complete patient/study/series/instance tree.
-- [ ] Unsupported files can be represented with clear error reasons.
+- [x] Metadata models can represent a complete patient/study/series/instance tree.
+- [x] Unsupported files can be represented with clear error reasons.
 
 ## Phase 3: DICOM parsing
 
-- [ ] Implement file preflight:
-  - [ ] Check DICOM preamble when available.
-  - [ ] Detect likely DICOM without relying only on extension.
-  - [ ] Reject unreadable files safely.
-- [ ] Parse core DICOM header elements:
-  - [ ] Patient ID.
-  - [ ] Patient name.
-  - [ ] Study Instance UID.
-  - [ ] Study date.
-  - [ ] Study description.
-  - [ ] Series Instance UID.
-  - [ ] Series description.
-  - [ ] SOP Instance UID.
-  - [ ] Modality.
-  - [ ] Instance number.
-  - [ ] Image Position Patient.
-  - [ ] Image Orientation Patient.
-  - [ ] Pixel Spacing.
-  - [ ] Slice Thickness.
-  - [ ] Rows.
-  - [ ] Columns.
-  - [ ] Bits Allocated.
-  - [ ] Bits Stored.
-  - [ ] High Bit.
-  - [ ] Pixel Representation.
-  - [ ] Samples Per Pixel.
-  - [ ] Photometric Interpretation.
-  - [ ] Rescale Slope.
-  - [ ] Rescale Intercept.
-  - [ ] Window Center.
-  - [ ] Window Width.
-  - [ ] Transfer Syntax UID.
-- [ ] Support Phase 1 transfer syntaxes:
-  - [ ] Explicit VR Little Endian.
-  - [ ] Implicit VR Little Endian.
-- [ ] Add clear unsupported transfer syntax errors.
-- [ ] Add parser tests using synthetic/minimal DICOM fixtures.
+- [x] Implement file preflight:
+  - [x] Check DICOM preamble when available.
+  - [x] Detect likely DICOM without relying only on extension.
+  - [x] Reject unreadable files safely.
+- [x] Parse core DICOM header elements:
+  - [x] Patient ID.
+  - [x] Patient name.
+  - [x] Study Instance UID.
+  - [x] Study date.
+  - [x] Study description.
+  - [x] Series Instance UID.
+  - [x] Series description.
+  - [x] SOP Instance UID.
+  - [x] Modality.
+  - [x] Instance number.
+  - [x] Image Position Patient.
+  - [x] Image Orientation Patient.
+  - [x] Pixel Spacing.
+  - [x] Slice Thickness.
+  - [x] Rows.
+  - [x] Columns.
+  - [x] Bits Allocated.
+  - [x] Bits Stored.
+  - [x] High Bit.
+  - [x] Pixel Representation.
+  - [x] Samples Per Pixel.
+  - [x] Photometric Interpretation.
+  - [x] Rescale Slope.
+  - [x] Rescale Intercept.
+  - [x] Window Center.
+  - [x] Window Width.
+  - [x] Transfer Syntax UID.
+- [x] Support Phase 1 transfer syntaxes:
+  - [x] Explicit VR Little Endian.
+  - [x] Implicit VR Little Endian.
+- [x] Add clear unsupported transfer syntax errors.
+- [x] Add parser tests using synthetic/minimal DICOM fixtures.
 
 Acceptance criteria:
 
-- [ ] Parser extracts required metadata from uncompressed MRI DICOM files.
-- [ ] Invalid files do not crash the app.
-- [ ] Unsupported transfer syntaxes produce actionable errors.
+- [x] Parser extracts required metadata from uncompressed MRI DICOM files.
+- [x] Invalid files do not crash the app.
+- [x] Unsupported transfer syntaxes produce actionable errors.
 
 ## Phase 4: Import pipeline
 
-- [ ] Implement single-file import.
-- [ ] Implement recursive folder import.
-- [ ] Implement platform-specific import adapters:
-  - [ ] Desktop file picker.
-  - [ ] Desktop recursive folder picker.
-  - [ ] Mobile document picker.
+- [x] Implement single-file import.
+- [x] Implement recursive folder import.
+- [x] Implement platform-specific import adapters:
+  - [x] Desktop file picker.
+  - [x] Desktop recursive folder picker.
+  - [x] Mobile document picker.
   - [ ] Mobile shared-file/open-with handling.
-  - [ ] Web file picker.
-  - [ ] Web multi-file import.
+  - [x] Web file picker.
+  - [x] Web multi-file import.
   - [ ] Web drag/drop import where supported.
-- [ ] Handle platforms where folder import is restricted:
-  - [ ] Show multi-file import fallback.
+- [x] Handle platforms where folder import is restricted:
+  - [x] Show multi-file import fallback.
   - [ ] Preserve relative path information when browser APIs provide it.
-  - [ ] Document reduced behavior.
-- [ ] Run import work off the UI thread.
-- [ ] Emit progress updates:
-  - [ ] Files discovered.
-  - [ ] Files parsed.
-  - [ ] Files skipped.
-  - [ ] Series indexed.
-- [ ] Group files:
-  - [ ] Patient.
-  - [ ] Study.
-  - [ ] Series.
-  - [ ] Instance.
-- [ ] Sort instances inside each series.
-- [ ] Preserve references to original file paths.
+  - [x] Document reduced behavior.
+- [x] Run import work off the UI thread.
+- [x] Emit progress updates:
+  - [x] Files discovered.
+  - [x] Files parsed.
+  - [x] Files skipped.
+  - [x] Series indexed.
+- [x] Group files:
+  - [x] Patient.
+  - [x] Study.
+  - [x] Series.
+  - [x] Instance.
+- [x] Sort instances inside each series.
+- [x] Preserve references to original file paths.
 - [ ] Add import cancellation.
-- [ ] Add import summary screen/state.
-- [ ] Add import error collection.
+- [x] Add import summary screen/state.
+- [x] Add import error collection.
 
 Acceptance criteria:
 
-- [ ] User can import DICOM files on every Flutter platform.
-- [ ] User can import a folder on platforms that support folder access.
-- [ ] Non-DICOM files are skipped.
-- [ ] Multiple series are grouped correctly.
-- [ ] UI remains responsive during import.
+- [x] User can import DICOM files on every Flutter platform.
+- [x] User can import a folder on platforms that support folder access.
+- [x] Non-DICOM files are skipped.
+- [x] Multiple series are grouped correctly.
+- [x] UI remains responsive during import.
 
 ## Phase 5: Local database and repositories
 
@@ -264,36 +265,36 @@ Acceptance criteria:
   - [ ] Modality.
   - [ ] Series description.
 - [ ] Add recent imports.
-- [ ] Add selected series state.
-- [ ] Add drag/drop or click-to-open series behavior.
+- [x] Add selected series state.
+- [x] Add drag/drop or click-to-open series behavior.
 - [ ] Add per-series metadata summary.
 - [ ] Add safe display mode that can hide patient name.
 
 Acceptance criteria:
 
 - [ ] User can find imported studies.
-- [ ] User can select a series and load it into the viewer.
+- [x] User can select a series and load it into the viewer.
 - [ ] Browser handles empty and large study lists.
 
 ## Phase 7: Pixel data decoding
 
-- [ ] Locate pixel data element.
-- [ ] Decode uncompressed grayscale pixel data.
-- [ ] Handle signed and unsigned pixel representation.
-- [ ] Apply bits stored/high bit correctly.
-- [ ] Apply rescale slope/intercept.
-- [ ] Support MONOCHROME2.
-- [ ] Support MONOCHROME1 through inversion.
-- [ ] Represent decoded slice as typed numeric data.
-- [ ] Add pixel min/max/statistics calculation.
+- [x] Locate pixel data element.
+- [x] Decode uncompressed grayscale pixel data.
+- [x] Handle signed and unsigned pixel representation.
+- [x] Apply bits stored/high bit correctly.
+- [x] Apply rescale slope/intercept.
+- [x] Support MONOCHROME2.
+- [x] Support MONOCHROME1 through inversion.
+- [x] Represent decoded slice as typed numeric data.
+- [x] Add pixel min/max/statistics calculation.
 - [ ] Add decode cache.
 - [ ] Run decoding outside the UI thread.
-- [ ] Add tests for pixel decoding and rescale math.
+- [x] Add tests for pixel decoding and rescale math.
 
 Acceptance criteria:
 
-- [ ] A valid uncompressed MRI slice decodes into correct intensity values.
-- [ ] Decoding failures are reported without crashing.
+- [x] A valid uncompressed MRI slice decodes into correct intensity values.
+- [x] Decoding failures are reported without crashing.
 - [ ] Decoding does not block the UI.
 
 ## Phase 8: 2D slice renderer
@@ -306,10 +307,10 @@ Acceptance criteria:
   - [ ] Window width.
   - [ ] Inversion.
   - [ ] Fit mode.
-- [ ] Implement window/level transform.
-- [ ] Convert intensity data to display buffer.
-- [ ] Render slice in Flutter.
-- [ ] Preserve pixel aspect ratio.
+- [x] Implement window/level transform.
+- [x] Convert intensity data to display buffer.
+- [x] Render slice in Flutter.
+- [x] Preserve pixel aspect ratio.
 - [ ] Add interaction handling:
   - [ ] Mouse wheel slice scrolling.
   - [ ] Trackpad scrolling.
@@ -328,11 +329,11 @@ Acceptance criteria:
   - [ ] Pixel probe readout.
 - [ ] Add reset viewport action.
 - [ ] Add fit-to-window action.
-- [ ] Add golden/widget tests for key states.
+- [x] Add golden/widget tests for key states.
 
 Acceptance criteria:
 
-- [ ] Axial slice displays correctly.
+- [x] Axial slice displays correctly.
 - [ ] Slice scrolling is smooth with mouse, trackpad, and touch input.
 - [ ] Zoom/pan preserve image geometry.
 - [ ] Window/level changes update interactively.
