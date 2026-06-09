@@ -21,11 +21,13 @@ class _VolumeViewState extends State<VolumeView> {
   double _rotationX = -0.45;
   double _rotationY = 0.65;
   double _zoom = 1.0;
+  double _opacityThreshold = 0.05;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _volume = _builder.build(widget.series);
+    _buildVolume();
   }
 
   @override
@@ -33,56 +35,146 @@ class _VolumeViewState extends State<VolumeView> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.series.instanceUid != widget.series.instanceUid ||
         oldWidget.series.instances.length != widget.series.instances.length) {
+      _buildVolume();
+    }
+  }
+
+  void _buildVolume() {
+    try {
       _volume = _builder.build(widget.series);
+      _error = null;
+    } on Object catch (error) {
+      _error = error.toString();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_error != null) {
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 240),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: Color(0xFFE27B7B)),
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFFB8C7CD)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     if (_volume.isEmpty) {
-      return const Center(child: Text('3D volume has no renderable pixels'));
+      return const Center(child: Text('3D volume has no renderable voxels'));
     }
 
-    return Listener(
-      onPointerSignal: (event) {
-        if (event is PointerScrollEvent) {
-          setState(() {
-            _zoom = (_zoom * (event.scrollDelta.dy > 0 ? 0.92 : 1.08)).clamp(
-              0.45,
-              3.0,
-            );
-          });
-        }
-      },
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onPanUpdate: (details) {
-          setState(() {
-            _rotationY += details.delta.dx * 0.01;
-            _rotationX = (_rotationX + details.delta.dy * 0.01).clamp(
-              -pi / 2,
-              pi / 2,
-            );
-          });
-        },
-        onDoubleTap: () {
-          setState(() {
-            _rotationX = -0.45;
-            _rotationY = 0.65;
-            _zoom = 1.0;
-          });
-        },
-        child: CustomPaint(
-          painter: _VolumePainter(
-            volume: _volume,
-            rotationX: _rotationX,
-            rotationY: _rotationY,
-            zoom: _zoom,
-            color: Theme.of(context).colorScheme.primary,
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Listener(
+            onPointerSignal: (event) {
+              if (event is PointerScrollEvent) {
+                setState(() {
+                  _zoom = (_zoom * (event.scrollDelta.dy > 0 ? 0.92 : 1.08))
+                      .clamp(0.45, 3.0);
+                });
+              }
+            },
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onPanUpdate: (details) {
+                setState(() {
+                  _rotationY += details.delta.dx * 0.01;
+                  _rotationX = (_rotationX + details.delta.dy * 0.01).clamp(
+                    -pi / 2,
+                    pi / 2,
+                  );
+                });
+              },
+              onDoubleTap: () {
+                setState(() {
+                  _rotationX = -0.45;
+                  _rotationY = 0.65;
+                  _zoom = 1.0;
+                });
+              },
+              child: CustomPaint(
+                painter: _VolumePainter(
+                  volume: _volume,
+                  rotationX: _rotationX,
+                  rotationY: _rotationY,
+                  zoom: _zoom,
+                  opacityThreshold: _opacityThreshold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                child: const SizedBox.expand(),
+              ),
+            ),
           ),
-          child: const SizedBox.expand(),
         ),
-      ),
+        Positioned(
+          left: 12,
+          top: 12,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xAA000000),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Text(
+              'CPU 3D fallback (point cloud)',
+              style: TextStyle(color: Color(0xFFB8C7CD), fontSize: 11),
+            ),
+          ),
+        ),
+        Positioned(
+          right: 12,
+          top: 12,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xAA000000),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Threshold',
+                  style: TextStyle(color: Color(0xFFB8C7CD), fontSize: 11),
+                ),
+                const SizedBox(width: 6),
+                SizedBox(
+                  width: 80,
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 2,
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 6,
+                      ),
+                    ),
+                    child: Slider(
+                      min: 0,
+                      max: 1,
+                      value: _opacityThreshold,
+                      onChanged: (v) {
+                        setState(() {
+                          _opacityThreshold = v;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -93,6 +185,7 @@ class _VolumePainter extends CustomPainter {
     required this.rotationX,
     required this.rotationY,
     required this.zoom,
+    required this.opacityThreshold,
     required this.color,
   });
 
@@ -100,6 +193,7 @@ class _VolumePainter extends CustomPainter {
   final double rotationX;
   final double rotationY;
   final double zoom;
+  final double opacityThreshold;
   final Color color;
 
   @override
@@ -128,6 +222,7 @@ class _VolumePainter extends CustomPainter {
 
     final paint = Paint()..style = PaintingStyle.fill;
     for (final point in projected) {
+      if (point.intensity < opacityThreshold) continue;
       final alpha = (40 + point.intensity * 180).round().clamp(0, 255);
       final gray = (point.intensity * 255).round().clamp(0, 255);
       paint.color = Color.fromARGB(alpha, gray, gray, gray);
@@ -213,6 +308,7 @@ class _VolumePainter extends CustomPainter {
         oldDelegate.rotationX != rotationX ||
         oldDelegate.rotationY != rotationY ||
         oldDelegate.zoom != zoom ||
+        oldDelegate.opacityThreshold != opacityThreshold ||
         oldDelegate.color != color;
   }
 }

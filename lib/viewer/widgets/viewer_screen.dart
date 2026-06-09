@@ -1,6 +1,7 @@
 import 'package:dicom_viewer/dicom/import/dicom_import_adapter.dart';
 import 'package:dicom_viewer/dicom/import/dicom_import_runner.dart';
 import 'package:dicom_viewer/dicom/import/file_picker_dicom_import_adapter.dart';
+import 'package:dicom_viewer/viewer/rendering/window_level.dart';
 import 'package:dicom_viewer/viewer/state/viewer_state.dart';
 import 'package:dicom_viewer/viewer/widgets/metadata_panel.dart';
 import 'package:dicom_viewer/viewer/widgets/series_browser.dart';
@@ -47,12 +48,88 @@ class _ViewerScreenState extends State<ViewerScreen> {
 
   void _selectSeries(String seriesInstanceUid) {
     setState(() {
+      final recents = <String>[
+        seriesInstanceUid,
+        ..._state.recentSeriesIds.where((id) => id != seriesInstanceUid),
+      ];
       _state = _state.copyWith(
+        selectedStudyId: _findStudyForSeries(seriesInstanceUid),
         selectedSeriesId: seriesInstanceUid,
         sliceIndex: 0,
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+        recentSeriesIds: recents.take(10).toList(growable: false),
         importMessage: 'Loaded selected series.',
       );
     });
+  }
+
+  void _setSearchQuery(String query) {
+    setState(() {
+      _state = _state.copyWith(searchQuery: query);
+    });
+  }
+
+  void _togglePatientName() {
+    setState(() {
+      _state = _state.copyWith(hidePatientName: !_state.hidePatientName);
+    });
+  }
+
+  void _setZoom(double zoom) {
+    setState(() {
+      _state = _state.copyWith(zoom: zoom.clamp(0.1, 8.0).toDouble());
+    });
+  }
+
+  void _setPan(Offset delta) {
+    setState(() {
+      _state = _state.copyWith(
+        panX: _state.panX + delta.dx,
+        panY: _state.panY + delta.dy,
+      );
+    });
+  }
+
+  void _toggleInvert() {
+    setState(() {
+      _state = _state.copyWith(invert: !_state.invert);
+    });
+  }
+
+  void _resetViewport() {
+    setState(() {
+      _state = _state.copyWith(zoom: 1, panX: 0, panY: 0, fitMode: true);
+    });
+  }
+
+  void _fitViewport() {
+    setState(() {
+      _state = _state.copyWith(fitMode: true, zoom: 1, panX: 0, panY: 0);
+    });
+  }
+
+  void _setWindowLevel(WindowLevel windowLevel) {
+    setState(() {
+      _state = _state.copyWith(
+        windowCenter: windowLevel.center,
+        windowWidth: windowLevel.width,
+      );
+    });
+  }
+
+  String? _findStudyForSeries(String seriesInstanceUid) {
+    for (final patient in _state.patients) {
+      for (final study in patient.studies) {
+        for (final series in study.series) {
+          if (series.instanceUid == seriesInstanceUid) {
+            return study.instanceUid;
+          }
+        }
+      }
+    }
+    return null;
   }
 
   void _setSliceIndex(int sliceIndex) {
@@ -176,6 +253,12 @@ class _ViewerScreenState extends State<ViewerScreen> {
               onToolChanged: _setTool,
               onSliceChanged: _setSliceIndex,
               onViewportSelected: _setActiveViewport,
+              onZoomChanged: _setZoom,
+              onPanChanged: _setPan,
+              onInvertToggled: _toggleInvert,
+              onResetViewport: _resetViewport,
+              onFitViewport: _fitViewport,
+              onWindowLevelChanged: _setWindowLevel,
             );
           }
 
@@ -184,8 +267,16 @@ class _ViewerScreenState extends State<ViewerScreen> {
               state: _state,
               onToolChanged: _setTool,
               onSeriesSelected: _selectSeries,
+              onSearchChanged: _setSearchQuery,
+              onTogglePatientName: _togglePatientName,
               onSliceChanged: _setSliceIndex,
               onViewportSelected: _setActiveViewport,
+              onZoomChanged: _setZoom,
+              onPanChanged: _setPan,
+              onInvertToggled: _toggleInvert,
+              onResetViewport: _resetViewport,
+              onFitViewport: _fitViewport,
+              onWindowLevelChanged: _setWindowLevel,
             );
           }
 
@@ -193,8 +284,16 @@ class _ViewerScreenState extends State<ViewerScreen> {
             state: _state,
             onToolChanged: _setTool,
             onSeriesSelected: _selectSeries,
+            onSearchChanged: _setSearchQuery,
+            onTogglePatientName: _togglePatientName,
             onSliceChanged: _setSliceIndex,
             onViewportSelected: _setActiveViewport,
+            onZoomChanged: _setZoom,
+            onPanChanged: _setPan,
+            onInvertToggled: _toggleInvert,
+            onResetViewport: _resetViewport,
+            onFitViewport: _fitViewport,
+            onWindowLevelChanged: _setWindowLevel,
           );
         },
       ),
@@ -207,15 +306,31 @@ class _DesktopWorkspace extends StatelessWidget {
     required this.state,
     required this.onToolChanged,
     required this.onSeriesSelected,
+    required this.onSearchChanged,
+    required this.onTogglePatientName,
     required this.onSliceChanged,
     required this.onViewportSelected,
+    required this.onZoomChanged,
+    required this.onPanChanged,
+    required this.onInvertToggled,
+    required this.onResetViewport,
+    required this.onFitViewport,
+    required this.onWindowLevelChanged,
   });
 
   final ViewerState state;
   final ValueChanged<ViewerTool> onToolChanged;
   final ValueChanged<String> onSeriesSelected;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback onTogglePatientName;
   final ValueChanged<int> onSliceChanged;
   final ValueChanged<ActiveViewport> onViewportSelected;
+  final ValueChanged<double> onZoomChanged;
+  final ValueChanged<Offset> onPanChanged;
+  final VoidCallback onInvertToggled;
+  final VoidCallback onResetViewport;
+  final VoidCallback onFitViewport;
+  final ValueChanged<WindowLevel> onWindowLevelChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -229,6 +344,8 @@ class _DesktopWorkspace extends StatelessWidget {
                 child: SeriesBrowser(
                   state: state,
                   onSeriesSelected: onSeriesSelected,
+                  onSearchChanged: onSearchChanged,
+                  onTogglePatientName: onTogglePatientName,
                 ),
               ),
               const VerticalDivider(width: 1),
@@ -237,6 +354,12 @@ class _DesktopWorkspace extends StatelessWidget {
                   state: state,
                   onSliceChanged: onSliceChanged,
                   onViewportSelected: onViewportSelected,
+                  onZoomChanged: onZoomChanged,
+                  onPanChanged: onPanChanged,
+                  onInvertToggled: onInvertToggled,
+                  onResetViewport: onResetViewport,
+                  onFitViewport: onFitViewport,
+                  onWindowLevelChanged: onWindowLevelChanged,
                 ),
               ),
               const VerticalDivider(width: 1),
@@ -264,15 +387,31 @@ class _TabletWorkspace extends StatelessWidget {
     required this.state,
     required this.onToolChanged,
     required this.onSeriesSelected,
+    required this.onSearchChanged,
+    required this.onTogglePatientName,
     required this.onSliceChanged,
     required this.onViewportSelected,
+    required this.onZoomChanged,
+    required this.onPanChanged,
+    required this.onInvertToggled,
+    required this.onResetViewport,
+    required this.onFitViewport,
+    required this.onWindowLevelChanged,
   });
 
   final ViewerState state;
   final ValueChanged<ViewerTool> onToolChanged;
   final ValueChanged<String> onSeriesSelected;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback onTogglePatientName;
   final ValueChanged<int> onSliceChanged;
   final ValueChanged<ActiveViewport> onViewportSelected;
+  final ValueChanged<double> onZoomChanged;
+  final ValueChanged<Offset> onPanChanged;
+  final VoidCallback onInvertToggled;
+  final VoidCallback onResetViewport;
+  final VoidCallback onFitViewport;
+  final ValueChanged<WindowLevel> onWindowLevelChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -286,6 +425,12 @@ class _TabletWorkspace extends StatelessWidget {
                   state: state,
                   onSliceChanged: onSliceChanged,
                   onViewportSelected: onViewportSelected,
+                  onZoomChanged: onZoomChanged,
+                  onPanChanged: onPanChanged,
+                  onInvertToggled: onInvertToggled,
+                  onResetViewport: onResetViewport,
+                  onFitViewport: onFitViewport,
+                  onWindowLevelChanged: onWindowLevelChanged,
                 ),
               ),
               const VerticalDivider(width: 1),
@@ -299,6 +444,8 @@ class _TabletWorkspace extends StatelessWidget {
                       child: SeriesBrowser(
                         state: state,
                         onSeriesSelected: onSeriesSelected,
+                        onSearchChanged: onSearchChanged,
+                        onTogglePatientName: onTogglePatientName,
                       ),
                     ),
                   ],
@@ -319,12 +466,24 @@ class _PhoneWorkspace extends StatelessWidget {
     required this.onToolChanged,
     required this.onSliceChanged,
     required this.onViewportSelected,
+    required this.onZoomChanged,
+    required this.onPanChanged,
+    required this.onInvertToggled,
+    required this.onResetViewport,
+    required this.onFitViewport,
+    required this.onWindowLevelChanged,
   });
 
   final ViewerState state;
   final ValueChanged<ViewerTool> onToolChanged;
   final ValueChanged<int> onSliceChanged;
   final ValueChanged<ActiveViewport> onViewportSelected;
+  final ValueChanged<double> onZoomChanged;
+  final ValueChanged<Offset> onPanChanged;
+  final VoidCallback onInvertToggled;
+  final VoidCallback onResetViewport;
+  final VoidCallback onFitViewport;
+  final ValueChanged<WindowLevel> onWindowLevelChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -335,6 +494,12 @@ class _PhoneWorkspace extends StatelessWidget {
             state: state,
             onSliceChanged: onSliceChanged,
             onViewportSelected: onViewportSelected,
+            onZoomChanged: onZoomChanged,
+            onPanChanged: onPanChanged,
+            onInvertToggled: onInvertToggled,
+            onResetViewport: onResetViewport,
+            onFitViewport: onFitViewport,
+            onWindowLevelChanged: onWindowLevelChanged,
           ),
         ),
         const Divider(height: 1),

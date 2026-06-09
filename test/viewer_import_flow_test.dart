@@ -38,13 +38,13 @@ void main() {
     });
     await tester.pump();
 
-    expect(find.byType(RawImage), findsOneWidget);
-    expect(find.textContaining('Slice 1/2'), findsOneWidget);
+    expect(find.byType(RawImage), findsNWidgets(2));
+    expect(find.textContaining('Slice 1/2 | W'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Next slice'));
     await tester.pump();
 
-    expect(find.textContaining('Slice 2/2'), findsOneWidget);
+    expect(find.textContaining('Slice 2/2 | W'), findsOneWidget);
 
     await tester.tap(find.text('3D'));
     await tester.pump();

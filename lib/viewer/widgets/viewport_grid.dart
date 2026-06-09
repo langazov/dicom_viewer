@@ -1,12 +1,15 @@
+import 'package:flutter/gestures.dart';
+
 import 'package:dicom_viewer/dicom/domain/dicom_models.dart';
-import 'package:dicom_viewer/dicom/pixel/decoded_slice.dart';
-import 'package:dicom_viewer/dicom/pixel/pixel_decoder.dart';
+import 'package:dicom_viewer/dicom/pixel/pixel_decode_service.dart';
+import 'package:dicom_viewer/dicom/pixel/pixel_decode_service_locator.dart';
 import 'package:dicom_viewer/viewer/rendering/slice_display_mapper.dart';
+import 'package:dicom_viewer/viewer/rendering/voxel_volume.dart';
 import 'package:dicom_viewer/viewer/rendering/window_level.dart';
 import 'package:dicom_viewer/viewer/state/viewer_state.dart';
+import 'package:dicom_viewer/viewer/widgets/mpr_view.dart';
 import 'package:dicom_viewer/viewer/widgets/slice_image_view.dart';
 import 'package:dicom_viewer/viewer/widgets/volume_view.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 class ViewportGrid extends StatelessWidget {
@@ -15,11 +18,23 @@ class ViewportGrid extends StatelessWidget {
     required this.state,
     required this.onSliceChanged,
     required this.onViewportSelected,
+    required this.onZoomChanged,
+    required this.onPanChanged,
+    required this.onInvertToggled,
+    required this.onResetViewport,
+    required this.onFitViewport,
+    required this.onWindowLevelChanged,
   });
 
   final ViewerState state;
   final ValueChanged<int> onSliceChanged;
   final ValueChanged<ActiveViewport> onViewportSelected;
+  final ValueChanged<double> onZoomChanged;
+  final ValueChanged<Offset> onPanChanged;
+  final VoidCallback onInvertToggled;
+  final VoidCallback onResetViewport;
+  final VoidCallback onFitViewport;
+  final ValueChanged<WindowLevel> onWindowLevelChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -59,12 +74,22 @@ class ViewportGrid extends StatelessWidget {
       ActiveViewport.axial => _AxialSliceContent(
         state: state,
         onSliceChanged: onSliceChanged,
+        onZoomChanged: onZoomChanged,
+        onPanChanged: onPanChanged,
+        onInvertToggled: onInvertToggled,
+        onResetViewport: onResetViewport,
+        onFitViewport: onFitViewport,
+        onWindowLevelChanged: onWindowLevelChanged,
       ),
-      ActiveViewport.sagittal => const _ViewportMessage(
-        message: 'Sagittal MPR is not built yet',
+      ActiveViewport.sagittal => _MprPlaneContent(
+        state: state,
+        planeLabel: 'Sagittal',
+        showWhenMissing: 'Volume not built for sagittal view',
       ),
-      ActiveViewport.coronal => const _ViewportMessage(
-        message: 'Coronal MPR is not built yet',
+      ActiveViewport.coronal => _MprPlaneContent(
+        state: state,
+        planeLabel: 'Coronal',
+        showWhenMissing: 'Volume not built for coronal view',
       ),
       ActiveViewport.volume3d => _VolumeContent(state: state),
     };
@@ -140,69 +165,12 @@ class _ViewportTile extends StatelessWidget {
                   ],
                 ),
               ),
-              Positioned(
-                right: 12,
-                top: 10,
-                child: Text(
-                  'L  A  H',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF9FB0B8),
-                  ),
-                ),
-              ),
               Positioned.fill(
                 top: 36,
                 bottom: 34,
                 left: 8,
                 right: 8,
-                child:
-                    child ??
-                    Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 240),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.image_search,
-                              size: 42,
-                              color: Color(0xFF6E858E),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              subtitle,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(color: const Color(0xFFB8C7CD)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-              ),
-              Positioned(
-                left: 12,
-                right: 12,
-                bottom: 10,
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.straighten,
-                      size: 16,
-                      color: Color(0xFF9FB0B8),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Scale unavailable',
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF9FB0B8),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                child: child ?? _placeholder(subtitle),
               ),
             ],
           ),
@@ -210,13 +178,48 @@ class _ViewportTile extends StatelessWidget {
       ),
     );
   }
+
+  Widget _placeholder(String message) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 240),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.image_search, size: 42, color: Color(0xFF6E858E)),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFFB8C7CD)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _AxialSliceContent extends StatelessWidget {
-  const _AxialSliceContent({required this.state, required this.onSliceChanged});
+  const _AxialSliceContent({
+    required this.state,
+    required this.onSliceChanged,
+    required this.onZoomChanged,
+    required this.onPanChanged,
+    required this.onInvertToggled,
+    required this.onResetViewport,
+    required this.onFitViewport,
+    required this.onWindowLevelChanged,
+  });
 
   final ViewerState state;
   final ValueChanged<int> onSliceChanged;
+  final ValueChanged<double> onZoomChanged;
+  final ValueChanged<Offset> onPanChanged;
+  final VoidCallback onInvertToggled;
+  final VoidCallback onResetViewport;
+  final VoidCallback onFitViewport;
+  final ValueChanged<WindowLevel> onWindowLevelChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -233,48 +236,109 @@ class _AxialSliceContent extends StatelessWidget {
     }
 
     try {
-      final decoded = const PixelDecoder().decodeNativeGrayscale16(
-        metadata: instance.metadata,
-        pixelBytes: pixelDataBytes,
+      final effectiveWindowLevel = WindowLevel(
+        center: state.windowCenter,
+        width: state.windowWidth,
       );
-      final windowLevel = _windowLevelForInstance(instance, decoded);
+      final decoded = pixelDecodeService.decode(
+        PixelDecodeRequest(
+          instance: instance,
+          windowCenter: effectiveWindowLevel.center,
+          windowWidth: effectiveWindowLevel.width,
+        ),
+      );
       final invert =
           instance.metadata.pixelData.photometricInterpretation ==
-          'MONOCHROME1';
+              'MONOCHROME1' ||
+          state.invert;
       final buffer = const SliceDisplayMapper().mapToRgba(
         slice: decoded,
-        windowLevel: windowLevel,
+        windowLevel: effectiveWindowLevel,
         invert: invert,
       );
 
-      return Listener(
-        onPointerSignal: (event) {
-          if (event is PointerScrollEvent) {
-            final direction = event.scrollDelta.dy > 0 ? 1 : -1;
-            onSliceChanged(state.sliceIndex + direction);
-          }
-        },
-        child: SliceImageView(
-          buffer: buffer,
-          pixelAspectRatio: _pixelAspectRatio(instance.metadata),
+      return MouseRegion(
+        child: Listener(
+          onPointerSignal: (event) {
+            if (event is PointerScrollEvent) {
+              if (event.kind == PointerDeviceKind.mouse &&
+                  (event.scrollDelta.dy.abs() > 0.01 ||
+                      event.scrollDelta.dx.abs() > 0.01)) {
+                if ((event.scrollDelta.dx.abs() + event.scrollDelta.dy.abs()) >
+                    0.01) {
+                  final centerDelta =
+                      effectiveWindowLevel.center + event.scrollDelta.dy * 0.5;
+                  final widthDelta =
+                      (effectiveWindowLevel.width + event.scrollDelta.dx * 0.5)
+                          .clamp(1.0, double.infinity);
+                  onWindowLevelChanged(
+                    WindowLevel(center: centerDelta, width: widthDelta),
+                  );
+                  return;
+                }
+              }
+              if (state.activeTool == ViewerTool.zoom) {
+                onZoomChanged(
+                  state.fitMode
+                      ? 1
+                      : state.zoom * (event.scrollDelta.dy > 0 ? 0.92 : 1.08),
+                );
+              } else if (state.activeTool == ViewerTool.windowLevel) {
+                final centerDelta =
+                    effectiveWindowLevel.center + event.scrollDelta.dy * 0.5;
+                final widthDelta =
+                    (effectiveWindowLevel.width + event.scrollDelta.dx * 0.5)
+                        .clamp(1.0, double.infinity);
+                onWindowLevelChanged(
+                  WindowLevel(center: centerDelta, width: widthDelta),
+                );
+              } else {
+                final direction = event.scrollDelta.dy > 0 ? 1 : -1;
+                onSliceChanged(state.sliceIndex + direction);
+              }
+            }
+          },
+          child: SliceImageView(
+            buffer: buffer,
+            pixelAspectRatio: _pixelAspectRatio(instance.metadata),
+            zoom: state.zoom,
+            panX: state.panX,
+            panY: state.panY,
+            invert: invert,
+            fitMode: state.fitMode,
+            onZoomChanged: state.activeTool == ViewerTool.zoom
+                ? onZoomChanged
+                : null,
+            onPanChanged: state.activeTool == ViewerTool.pan
+                ? onPanChanged
+                : null,
+            onInvertToggled: onInvertToggled,
+            onResetRequested: onResetViewport,
+            onFitRequested: onFitViewport,
+            onWindowLevelDrag: state.activeTool == ViewerTool.windowLevel
+                ? (delta) {
+                    final center = effectiveWindowLevel.center + delta.dy * 0.5;
+                    final width = (effectiveWindowLevel.width + delta.dx * 0.5)
+                        .clamp(1.0, double.infinity);
+                    onWindowLevelChanged(
+                      WindowLevel(center: center, width: width),
+                    );
+                  }
+                : null,
+            scaleBarMm: instance.metadata.pixelSpacing?.rowMm != null
+                ? 50 *
+                      instance.metadata.pixelSpacing!.rowMm *
+                      instance.metadata.rows
+                : null,
+            sliceLabel: state.selectedSeriesInstanceCount == 0
+                ? null
+                : 'Slice ${state.sliceIndex + 1}/${state.selectedSeriesInstanceCount}',
+          ),
         ),
       );
     } on Object catch (error) {
       return _ViewportMessage(message: 'Cannot render slice: $error');
     }
-  }
-
-  WindowLevel _windowLevelForInstance(
-    DicomInstance instance,
-    DecodedSlice decoded,
-  ) {
-    final center = instance.metadata.windowCenter;
-    final width = instance.metadata.windowWidth;
-    if (center != null && width != null && width > 0) {
-      return WindowLevel(center: center, width: width);
-    }
-
-    return WindowLevel.fromRange(decoded.minValue, decoded.maxValue);
   }
 
   double _pixelAspectRatio(DicomMetadata metadata) {
@@ -305,9 +369,7 @@ class _ViewportMessage extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFFB8C7CD)),
+              style: const TextStyle(color: Color(0xFFB8C7CD)),
             ),
           ],
         ),
@@ -339,5 +401,82 @@ class _VolumeContent extends StatelessWidget {
     } on Object catch (error) {
       return _ViewportMessage(message: 'Cannot build 3D view: $error');
     }
+  }
+}
+
+class _MprPlaneContent extends StatefulWidget {
+  const _MprPlaneContent({
+    required this.state,
+    required this.planeLabel,
+    required this.showWhenMissing,
+  });
+
+  final ViewerState state;
+  final String planeLabel;
+  final String showWhenMissing;
+
+  @override
+  State<_MprPlaneContent> createState() => _MprPlaneContentState();
+}
+
+class _MprPlaneContentState extends State<_MprPlaneContent> {
+  VoxelVolume? _volume;
+  String? _lastSeriesId;
+  Object? _error;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _rebuildIfNeeded();
+  }
+
+  void _rebuildIfNeeded() {
+    final series = widget.state.selectedSeries;
+    if (series == null) {
+      setState(() {
+        _volume = null;
+        _lastSeriesId = null;
+        _error = null;
+      });
+      return;
+    }
+    if (_lastSeriesId == series.instanceUid) {
+      return;
+    }
+    try {
+      final volume = const VoxelVolumeBuilder().build(series);
+      setState(() {
+        _volume = volume;
+        _lastSeriesId = series.instanceUid;
+        _error = null;
+      });
+    } on Object catch (error) {
+      setState(() {
+        _volume = null;
+        _lastSeriesId = series.instanceUid;
+        _error = error;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final series = widget.state.selectedSeries;
+    if (series == null) {
+      return _ViewportMessage(message: widget.showWhenMissing);
+    }
+    if (_error != null) {
+      return _ViewportMessage(message: '$_error');
+    }
+    final volume = _volume;
+    if (volume == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return MprView(
+      volume: volume,
+      windowCenter: widget.state.windowCenter,
+      windowWidth: widget.state.windowWidth,
+      invert: widget.state.invert,
+    );
   }
 }

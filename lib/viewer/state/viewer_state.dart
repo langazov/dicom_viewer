@@ -22,6 +22,13 @@ class ViewerState {
     this.windowWidth = 1024,
     this.sliceIndex = 0,
     this.zoom = 1,
+    this.panX = 0,
+    this.panY = 0,
+    this.invert = false,
+    this.fitMode = true,
+    this.searchQuery = '',
+    this.recentSeriesIds = const [],
+    this.hidePatientName = false,
     this.importStatus = ImportStatus.idle,
     this.importMessage,
   });
@@ -38,6 +45,13 @@ class ViewerState {
   final double windowWidth;
   final int sliceIndex;
   final double zoom;
+  final double panX;
+  final double panY;
+  final bool invert;
+  final bool fitMode;
+  final String searchQuery;
+  final List<String> recentSeriesIds;
+  final bool hidePatientName;
   final ImportStatus importStatus;
   final String? importMessage;
 
@@ -92,6 +106,48 @@ class ViewerState {
     return selectedSeries?.instances.length ?? 0;
   }
 
+  List<DicomPatient> get filteredPatients {
+    final query = searchQuery.trim().toLowerCase();
+    if (query.isEmpty) {
+      return patients;
+    }
+    return patients
+        .map((patient) {
+          final studies = patient.studies
+              .map((study) {
+                final series = study.series
+                    .where(
+                      (s) =>
+                          s.description.toLowerCase().contains(query) ||
+                          s.modality.toLowerCase().contains(query) ||
+                          s.instanceUid.toLowerCase().contains(query),
+                    )
+                    .toList(growable: false);
+                if (series.isEmpty) {
+                  return null;
+                }
+                return DicomStudy(
+                  instanceUid: study.instanceUid,
+                  description: study.description,
+                  studyDate: study.studyDate,
+                  series: series,
+                );
+              })
+              .whereType<DicomStudy>()
+              .toList(growable: false);
+          if (studies.isEmpty) {
+            return null;
+          }
+          return DicomPatient(
+            id: patient.id,
+            displayName: patient.displayName,
+            studies: studies,
+          );
+        })
+        .whereType<DicomPatient>()
+        .toList(growable: false);
+  }
+
   ViewerState copyWith({
     String? selectedStudyId,
     String? selectedSeriesId,
@@ -105,8 +161,16 @@ class ViewerState {
     double? windowWidth,
     int? sliceIndex,
     double? zoom,
+    double? panX,
+    double? panY,
+    bool? invert,
+    bool? fitMode,
+    String? searchQuery,
+    List<String>? recentSeriesIds,
+    bool? hidePatientName,
     ImportStatus? importStatus,
     String? importMessage,
+    bool resetSearch = false,
   }) {
     return ViewerState(
       selectedStudyId: selectedStudyId ?? this.selectedStudyId,
@@ -121,6 +185,13 @@ class ViewerState {
       windowWidth: windowWidth ?? this.windowWidth,
       sliceIndex: sliceIndex ?? this.sliceIndex,
       zoom: zoom ?? this.zoom,
+      panX: panX ?? this.panX,
+      panY: panY ?? this.panY,
+      invert: invert ?? this.invert,
+      fitMode: fitMode ?? this.fitMode,
+      searchQuery: resetSearch ? '' : (searchQuery ?? this.searchQuery),
+      recentSeriesIds: recentSeriesIds ?? this.recentSeriesIds,
+      hidePatientName: hidePatientName ?? this.hidePatientName,
       importStatus: importStatus ?? this.importStatus,
       importMessage: importMessage ?? this.importMessage,
     );
