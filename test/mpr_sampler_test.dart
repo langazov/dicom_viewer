@@ -78,4 +78,38 @@ void main() {
     expect(coronal.height, 2);
     expect(coronal.values.length, 4);
   });
+
+  test('MprSampler sagittal stays in bounds for non-square volumes', () {
+    final series = DicomSeries(
+      instanceUid: 'S1',
+      description: '',
+      modality: 'MR',
+      instances: List.generate(8, (i) {
+        return _buildInstance(
+          sop: 'a$i',
+          number: i + 1,
+          pixels: List<int>.filled(16, i * 16),
+          z: i.toDouble(),
+        );
+      }),
+    );
+    final volume = const VoxelVolumeBuilder().build(series);
+    expect(volume.width, 2);
+    expect(volume.height, 2);
+    expect(volume.depth, 8);
+
+    const sampler = MprSampler();
+    for (var i = 0; i < volume.width; i += 1) {
+      final slice = sampler.sample(volume, MprPlane.sagittal, i);
+      expect(slice.width, volume.depth);
+      expect(slice.height, volume.height);
+      expect(slice.values.length, volume.depth * volume.height);
+    }
+    for (var i = 0; i < volume.height; i += 1) {
+      final slice = sampler.sample(volume, MprPlane.coronal, i);
+      expect(slice.width, volume.width);
+      expect(slice.height, volume.depth);
+      expect(slice.values.length, volume.width * volume.depth);
+    }
+  });
 }

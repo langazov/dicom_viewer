@@ -53,9 +53,9 @@ class MprSampler {
         );
       case MprPlane.sagittal:
         for (var y = 0; y < height; y += 1) {
-          for (var x = 0; x < width; x += 1) {
-            values[y * width + x] =
-                volume.values[(y * volume.height + x) * volume.width + n];
+          for (var d = 0; d < width; d += 1) {
+            values[y * width + d] =
+                volume.values[(d * volume.height + y) * volume.width + n];
           }
         }
         return MprSlice(
