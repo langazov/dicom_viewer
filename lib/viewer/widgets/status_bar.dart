@@ -13,8 +13,9 @@ class StatusBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sliceCount = state.selectedSeriesInstanceCount;
-    final hasSlices = sliceCount > 0;
+    final maxIndex = state.activeSliceMax;
+    final hasSlices = maxIndex > 0;
+    final currentIndex = hasSlices ? state.activeSliceIndex : 0;
 
     return Container(
       height: hasSlices ? 72 : 34,
@@ -71,8 +72,8 @@ class StatusBar extends StatelessWidget {
                     width: 32,
                     height: 32,
                   ),
-                  onPressed: state.sliceIndex > 0
-                      ? () => onSliceChanged(state.sliceIndex - 1)
+                  onPressed: currentIndex > 0
+                      ? () => onSliceChanged(currentIndex - 1)
                       : null,
                 ),
                 Expanded(
@@ -88,12 +89,12 @@ class StatusBar extends StatelessWidget {
                     ),
                     child: Slider(
                       min: 0,
-                      max: (sliceCount - 1).toDouble(),
-                      divisions: sliceCount > 1 ? sliceCount - 1 : null,
-                      value: state.sliceIndex
-                          .clamp(0, sliceCount - 1)
+                      max: (maxIndex - 1).toDouble(),
+                      divisions: maxIndex > 1 ? maxIndex - 1 : null,
+                      value: currentIndex
+                          .clamp(0, maxIndex - 1)
                           .toDouble(),
-                      onChanged: sliceCount > 1
+                      onChanged: maxIndex > 1
                           ? (value) => onSliceChanged(value.round())
                           : null,
                     ),
@@ -107,8 +108,8 @@ class StatusBar extends StatelessWidget {
                     width: 32,
                     height: 32,
                   ),
-                  onPressed: state.sliceIndex < sliceCount - 1
-                      ? () => onSliceChanged(state.sliceIndex + 1)
+                  onPressed: currentIndex < maxIndex - 1
+                      ? () => onSliceChanged(currentIndex + 1)
                       : null,
                 ),
               ],
@@ -128,8 +129,14 @@ class StatusBar extends StatelessWidget {
   }
 
   String _sliceLabel(ViewerState state) {
-    final count = state.selectedSeriesInstanceCount;
-    final slice = count == 0 ? 0 : state.sliceIndex + 1;
-    return 'Slice $slice/$count | W ${state.windowWidth.toStringAsFixed(0)} / L ${state.windowCenter.toStringAsFixed(0)} | Zoom ${(state.zoom * 100).toStringAsFixed(0)}%';
+    final max = state.activeSliceMax;
+    final index = max == 0 ? 0 : state.activeSliceIndex + 1;
+    final planeLabel = switch (state.activeViewport) {
+      ActiveViewport.axial => 'Slice',
+      ActiveViewport.sagittal => 'Sag',
+      ActiveViewport.coronal => 'Cor',
+      ActiveViewport.volume3d => 'Slice',
+    };
+    return '$planeLabel $index/$max | W ${state.windowWidth.toStringAsFixed(0)} / L ${state.windowCenter.toStringAsFixed(0)} | Zoom ${(state.zoom * 100).toStringAsFixed(0)}%';
   }
 }

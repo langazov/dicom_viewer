@@ -1,3 +1,4 @@
+import 'package:dicom_viewer/dicom/domain/dicom_models.dart';
 import 'package:dicom_viewer/dicom/import/dicom_import_adapter.dart';
 import 'package:dicom_viewer/dicom/import/dicom_import_runner.dart';
 import 'package:dicom_viewer/dicom/import/file_picker_dicom_import_adapter.dart';
@@ -47,6 +48,24 @@ class _ViewerScreenState extends State<ViewerScreen> {
   }
 
   void _selectSeries(String seriesInstanceUid) {
+    final selectedSeries = _state.patients
+        .expand((p) => p.studies)
+        .expand((s) => s.series)
+        .firstWhere(
+          (s) => s.instanceUid == seriesInstanceUid,
+          orElse: () => const DicomSeries(
+            instanceUid: '',
+            description: '',
+            modality: '',
+            instances: [],
+          ),
+        );
+    final first = selectedSeries.instances.isEmpty
+        ? null
+        : selectedSeries.instances.first;
+    final sagittalCenter =
+        first == null ? 0 : (first.metadata.columns - 1) ~/ 2;
+    final coronalCenter = first == null ? 0 : (first.metadata.rows - 1) ~/ 2;
     setState(() {
       final recents = <String>[
         seriesInstanceUid,
@@ -56,6 +75,8 @@ class _ViewerScreenState extends State<ViewerScreen> {
         selectedStudyId: _findStudyForSeries(seriesInstanceUid),
         selectedSeriesId: seriesInstanceUid,
         sliceIndex: 0,
+        sagittalIndex: sagittalCenter,
+        coronalIndex: coronalCenter,
         zoom: 1,
         panX: 0,
         panY: 0,
@@ -133,13 +154,30 @@ class _ViewerScreenState extends State<ViewerScreen> {
   }
 
   void _setSliceIndex(int sliceIndex) {
-    final maxIndex = _state.selectedSeriesInstanceCount - 1;
-    if (maxIndex < 0) {
+    final series = _state.selectedSeries;
+    if (series == null || series.instances.isEmpty) {
       return;
     }
-
+    final first = series.instances.first;
     setState(() {
-      _state = _state.copyWith(sliceIndex: sliceIndex.clamp(0, maxIndex));
+      switch (_state.activeViewport) {
+        case ActiveViewport.axial:
+        case ActiveViewport.volume3d:
+          final maxIndex = series.instances.length - 1;
+          _state = _state.copyWith(
+            sliceIndex: sliceIndex.clamp(0, maxIndex),
+          );
+        case ActiveViewport.sagittal:
+          final maxIndex = first.metadata.columns - 1;
+          _state = _state.copyWith(
+            sagittalIndex: sliceIndex.clamp(0, maxIndex),
+          );
+        case ActiveViewport.coronal:
+          final maxIndex = first.metadata.rows - 1;
+          _state = _state.copyWith(
+            coronalIndex: sliceIndex.clamp(0, maxIndex),
+          );
+      }
     });
   }
 

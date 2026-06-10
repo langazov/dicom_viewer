@@ -85,11 +85,15 @@ class ViewportGrid extends StatelessWidget {
       ActiveViewport.sagittal => _MprPlaneContent(
         state: state,
         plane: MprPlane.sagittal,
+        normalIndex: state.sagittalIndex,
+        onSliceIndexChanged: onSliceChanged,
         showWhenMissing: 'Select a series to view the sagittal plane',
       ),
       ActiveViewport.coronal => _MprPlaneContent(
         state: state,
         plane: MprPlane.coronal,
+        normalIndex: state.coronalIndex,
+        onSliceIndexChanged: onSliceChanged,
         showWhenMissing: 'Select a series to view the coronal plane',
       ),
       ActiveViewport.volume3d => _VolumeContent(state: state),
@@ -295,7 +299,7 @@ class _AxialSliceContent extends StatelessWidget {
                 );
               } else {
                 final direction = event.scrollDelta.dy > 0 ? 1 : -1;
-                onSliceChanged(state.sliceIndex + direction);
+                onSliceChanged(state.activeSliceIndex + direction);
               }
             }
           },
@@ -418,11 +422,15 @@ class _MprPlaneContent extends StatefulWidget {
   const _MprPlaneContent({
     required this.state,
     required this.plane,
+    required this.normalIndex,
+    required this.onSliceIndexChanged,
     required this.showWhenMissing,
   });
 
   final ViewerState state;
   final MprPlane plane;
+  final int normalIndex;
+  final ValueChanged<int> onSliceIndexChanged;
   final String showWhenMissing;
 
   @override
@@ -479,19 +487,6 @@ class _MprPlaneContentState extends State<_MprPlaneContent> {
     }
   }
 
-  int _defaultNormalIndex() {
-    final volume = _volume;
-    if (volume == null) return 0;
-    switch (widget.plane) {
-      case MprPlane.axial:
-        return volume.depth ~/ 2;
-      case MprPlane.sagittal:
-        return volume.width ~/ 2;
-      case MprPlane.coronal:
-        return volume.height ~/ 2;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final series = widget.state.selectedSeries;
@@ -508,7 +503,8 @@ class _MprPlaneContentState extends State<_MprPlaneContent> {
     return MprView(
       volume: volume,
       plane: widget.plane,
-      normalIndex: _defaultNormalIndex(),
+      normalIndex: widget.normalIndex,
+      onSliceIndexChanged: widget.onSliceIndexChanged,
       windowCenter: widget.state.windowCenter,
       windowWidth: widget.state.windowWidth,
       invert: widget.state.invert,

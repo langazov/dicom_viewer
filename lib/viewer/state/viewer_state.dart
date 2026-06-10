@@ -21,6 +21,8 @@ class ViewerState {
     this.windowCenter = 512,
     this.windowWidth = 1024,
     this.sliceIndex = 0,
+    this.sagittalIndex = 0,
+    this.coronalIndex = 0,
     this.zoom = 1,
     this.panX = 0,
     this.panY = 0,
@@ -44,6 +46,8 @@ class ViewerState {
   final double windowCenter;
   final double windowWidth;
   final int sliceIndex;
+  final int sagittalIndex;
+  final int coronalIndex;
   final double zoom;
   final double panX;
   final double panY;
@@ -106,6 +110,40 @@ class ViewerState {
     return selectedSeries?.instances.length ?? 0;
   }
 
+  int get activeSliceIndex {
+    switch (activeViewport) {
+      case ActiveViewport.axial:
+      case ActiveViewport.volume3d:
+        return sliceIndex;
+      case ActiveViewport.sagittal:
+        return sagittalIndex;
+      case ActiveViewport.coronal:
+        return coronalIndex;
+    }
+  }
+
+  int get activeSliceMax {
+    final series = selectedSeries;
+    if (series == null) return 0;
+    switch (activeViewport) {
+      case ActiveViewport.axial:
+      case ActiveViewport.volume3d:
+        return series.instances.length;
+      case ActiveViewport.sagittal:
+        return selectedSeriesFirstInstance().metadata.columns;
+      case ActiveViewport.coronal:
+        return selectedSeriesFirstInstance().metadata.rows;
+    }
+  }
+
+  DicomInstance selectedSeriesFirstInstance() {
+    final series = selectedSeries;
+    if (series == null || series.instances.isEmpty) {
+      throw StateError('No series selected.');
+    }
+    return series.instances.first;
+  }
+
   List<DicomPatient> get filteredPatients {
     final query = searchQuery.trim().toLowerCase();
     if (query.isEmpty) {
@@ -160,6 +198,8 @@ class ViewerState {
     double? windowCenter,
     double? windowWidth,
     int? sliceIndex,
+    int? sagittalIndex,
+    int? coronalIndex,
     double? zoom,
     double? panX,
     double? panY,
@@ -184,6 +224,8 @@ class ViewerState {
       windowCenter: windowCenter ?? this.windowCenter,
       windowWidth: windowWidth ?? this.windowWidth,
       sliceIndex: sliceIndex ?? this.sliceIndex,
+      sagittalIndex: sagittalIndex ?? this.sagittalIndex,
+      coronalIndex: coronalIndex ?? this.coronalIndex,
       zoom: zoom ?? this.zoom,
       panX: panX ?? this.panX,
       panY: panY ?? this.panY,
