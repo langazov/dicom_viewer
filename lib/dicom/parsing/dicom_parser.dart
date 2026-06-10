@@ -173,6 +173,11 @@ class DicomParser {
       DicomTag.photometricInterpretation,
       'PhotometricInterpretation',
     );
+    final planarConfiguration = _optionalUint16(
+          elements,
+          DicomTag.planarConfiguration,
+        ) ??
+        0;
 
     final pixelData = PixelDataDescriptor(
       samplesPerPixel: samplesPerPixel,
@@ -183,6 +188,7 @@ class DicomParser {
           ? PixelRepresentation.unsigned
           : PixelRepresentation.signed,
       photometricInterpretation: photometricInterpretation,
+      planarConfiguration: planarConfiguration,
     );
 
     final metadata = DicomMetadata(
@@ -203,6 +209,10 @@ class DicomParser {
           _optionalDouble(elements, DicomTag.rescaleIntercept) ?? 0,
     );
 
+    final paletteLut = photometricInterpretation == 'PALETTE COLOR'
+        ? _buildPaletteLut(elements)
+        : null;
+
     return ParsedDicomFile(
       filePath: filePath,
       patientId: patientId,
@@ -222,8 +232,24 @@ class DicomParser {
         filePath: filePath,
         metadata: metadata,
         pixelDataBytes: elements[DicomTag.pixelData]?.value,
+        paletteLut: paletteLut,
       ),
       elements: Map.unmodifiable(elements),
+    );
+  }
+
+  PaletteColorLut? _buildPaletteLut(Map<DicomTag, DicomElement> elements) {
+    final redElement = elements[DicomTag.redPaletteColorLookupTableData];
+    final greenElement = elements[DicomTag.greenPaletteColorLookupTableData];
+    final blueElement = elements[DicomTag.bluePaletteColorLookupTableData];
+    if (redElement == null || greenElement == null || blueElement == null) {
+      return null;
+    }
+    return PaletteColorLut(
+      red: Uint8List.fromList(redElement.value),
+      green: Uint8List.fromList(greenElement.value),
+      blue: Uint8List.fromList(blueElement.value),
+      bitsPerEntry: 8,
     );
   }
 
@@ -356,6 +382,14 @@ class DicomParser {
   int? _optionalInt(Map<DicomTag, DicomElement> elements, DicomTag tag) {
     final value = _optionalString(elements, tag);
     return value == null ? null : int.tryParse(value);
+  }
+
+  int? _optionalUint16(Map<DicomTag, DicomElement> elements, DicomTag tag) {
+    final element = elements[tag];
+    if (element == null || element.value.length < 2) {
+      return null;
+    }
+    return ByteData.sublistView(element.value).getUint16(0, Endian.little);
   }
 
   double? _optionalDouble(Map<DicomTag, DicomElement> elements, DicomTag tag) {

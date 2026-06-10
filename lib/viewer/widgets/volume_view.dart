@@ -70,6 +70,19 @@ class _VolumeViewState extends State<VolumeView> {
       );
     }
     if (_volume.isEmpty) {
+      final reason = _volume.skippedReason;
+      if (reason != null) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              reason,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFFB8C7CD)),
+            ),
+          ),
+        );
+      }
       return const Center(child: Text('3D volume has no renderable voxels'));
     }
 

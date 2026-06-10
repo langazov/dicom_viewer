@@ -414,7 +414,11 @@ class _DesktopWorkspace extends StatelessWidget {
             ],
           ),
         ),
-        StatusBar(state: state, onSliceChanged: onSliceChanged),
+        StatusBar(
+          state: state,
+          onSliceChanged: onSliceChanged,
+          onViewportSelected: onViewportSelected,
+        ),
       ],
     );
   }
@@ -492,7 +496,11 @@ class _TabletWorkspace extends StatelessWidget {
             ],
           ),
         ),
-        StatusBar(state: state, onSliceChanged: onSliceChanged),
+        StatusBar(
+          state: state,
+          onSliceChanged: onSliceChanged,
+          onViewportSelected: onViewportSelected,
+        ),
       ],
     );
   }
@@ -545,7 +553,11 @@ class _PhoneWorkspace extends StatelessWidget {
           height: 132,
           child: ToolPanel(state: state, onToolChanged: onToolChanged),
         ),
-        StatusBar(state: state, onSliceChanged: onSliceChanged),
+        StatusBar(
+          state: state,
+          onSliceChanged: onSliceChanged,
+          onViewportSelected: onViewportSelected,
+        ),
       ],
     );
   }

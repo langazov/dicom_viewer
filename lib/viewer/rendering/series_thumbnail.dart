@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:dicom_viewer/dicom/domain/dicom_models.dart';
+import 'package:dicom_viewer/dicom/pixel/decoded_slice.dart';
 import 'package:dicom_viewer/dicom/pixel/pixel_decoder.dart';
 import 'package:dicom_viewer/viewer/rendering/slice_display_mapper.dart';
 import 'package:dicom_viewer/viewer/rendering/window_level.dart';
@@ -48,13 +49,24 @@ class SeriesThumbnailBuilder {
     if (bytes == null) {
       return null;
     }
-    final decoded = decoder.decodeNativeGrayscale16(
-      metadata: middle.metadata,
-      pixelBytes: bytes,
-    );
+    final metadata = middle.metadata;
+    final DecodedSlice decoded;
+    if (metadata.pixelData.isColor) {
+      decoded = decoder.decodeNativeColor(metadata: metadata, pixelBytes: bytes);
+    } else if (metadata.pixelData.isPaletteColor) {
+      decoded = decoder.decodePaletteColor(
+        metadata: metadata,
+        pixelBytes: bytes,
+        lut: middle.paletteLut,
+      );
+    } else {
+      decoded = decoder.decodeNativeGrayscale16(
+        metadata: metadata,
+        pixelBytes: bytes,
+      );
+    }
     final windowLevel = _windowLevel(middle, decoded);
-    final invert =
-        middle.metadata.pixelData.photometricInterpretation == 'MONOCHROME1';
+    final invert = metadata.pixelData.photometricInterpretation == 'MONOCHROME1';
     final buffer = mapper.mapToRgba(
       slice: decoded,
       windowLevel: windowLevel,

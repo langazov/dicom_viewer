@@ -33,6 +33,16 @@ class DicomTag implements Comparable<DicomTag> {
   static const sliceThickness = DicomTag(0x0018, 0x0050);
   static const transferSyntaxUid = DicomTag(0x0002, 0x0010);
   static const pixelData = DicomTag(0x7FE0, 0x0010);
+  static const redPaletteColorLookupTableData = DicomTag(0x0028, 0x1201);
+  static const greenPaletteColorLookupTableData = DicomTag(0x0028, 0x1202);
+  static const bluePaletteColorLookupTableData = DicomTag(0x0028, 0x1203);
+  static const redPaletteColorLookupTableDescriptor =
+      DicomTag(0x0028, 0x1101);
+  static const greenPaletteColorLookupTableDescriptor =
+      DicomTag(0x0028, 0x1102);
+  static const bluePaletteColorLookupTableDescriptor =
+      DicomTag(0x0028, 0x1103);
+  static const planarConfiguration = DicomTag(0x0028, 0x0006);
 
   @override
   int compareTo(DicomTag other) {

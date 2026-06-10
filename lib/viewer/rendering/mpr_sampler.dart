@@ -109,8 +109,9 @@ class MprSampler {
   int _normalMax(VoxelVolume volume, MprPlane plane) {
     switch (plane) {
       case MprPlane.axial:
-      case MprPlane.coronal:
         return volume.depth;
+      case MprPlane.coronal:
+        return volume.height;
       case MprPlane.sagittal:
         return volume.width;
     }

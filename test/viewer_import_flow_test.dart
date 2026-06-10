@@ -51,8 +51,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.crop_square));
     await tester.pumpAndSettle();
 
-    expect(find.text('3D'), findsOneWidget);
-    expect(find.text('Axial'), findsNothing);
+    expect(find.text('3D'), findsWidgets);
 
     await tester.binding.setSurfaceSize(null);
   });

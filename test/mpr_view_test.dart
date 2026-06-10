@@ -89,4 +89,53 @@ void main() {
 
     await tester.binding.setSurfaceSize(null);
   });
+
+  testWidgets('MprView updates the slice label when normalIndex changes',
+      (tester) async {
+    final series = DicomSeries(
+      instanceUid: 'S1',
+      description: '',
+      modality: 'MR',
+      instances: [
+        _buildInstance(sop: 'a', number: 1, pixels: [0, 64, 128, 255], z: 0),
+        _buildInstance(sop: 'b', number: 2, pixels: [255, 128, 64, 0], z: 2),
+      ],
+    );
+    final volume = const VoxelVolumeBuilder().build(series);
+
+    var currentIndex = 0;
+    late StateSetter outerSetState;
+    await tester.binding.setSurfaceSize(const Size(600, 400));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              outerSetState = setState;
+              return MprView(
+                volume: volume,
+                plane: MprPlane.coronal,
+                normalIndex: currentIndex,
+                windowCenter: 0,
+                windowWidth: 256,
+                onSliceIndexChanged: (v) => setState(() => currentIndex = v),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pump();
+
+    expect(find.textContaining('Coronal 1'), findsOneWidget);
+
+    outerSetState(() => currentIndex = 1);
+    await tester.pump();
+    expect(find.textContaining('Coronal 2'), findsOneWidget);
+
+    await tester.binding.setSurfaceSize(null);
+  });
 }

@@ -6,10 +6,12 @@ class StatusBar extends StatelessWidget {
     super.key,
     required this.state,
     required this.onSliceChanged,
+    required this.onViewportSelected,
   });
 
   final ViewerState state;
   final ValueChanged<int> onSliceChanged;
+  final ValueChanged<ActiveViewport> onViewportSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -112,6 +114,11 @@ class StatusBar extends StatelessWidget {
                       ? () => onSliceChanged(currentIndex + 1)
                       : null,
                 ),
+                const SizedBox(width: 8),
+                _PlaneSelector(
+                  active: state.activeViewport,
+                  onSelected: onViewportSelected,
+                ),
               ],
             ),
           ],
@@ -138,5 +145,47 @@ class StatusBar extends StatelessWidget {
       ActiveViewport.volume3d => 'Slice',
     };
     return '$planeLabel $index/$max | W ${state.windowWidth.toStringAsFixed(0)} / L ${state.windowCenter.toStringAsFixed(0)} | Zoom ${(state.zoom * 100).toStringAsFixed(0)}%';
+  }
+}
+
+class _PlaneSelector extends StatelessWidget {
+  const _PlaneSelector({required this.active, required this.onSelected});
+
+  final ActiveViewport active;
+  final ValueChanged<ActiveViewport> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<ActiveViewport>(
+      style: SegmentedButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        textStyle: const TextStyle(fontSize: 11),
+      ),
+      segments: const [
+        ButtonSegment(
+          value: ActiveViewport.axial,
+          label: Text('Axial'),
+          tooltip: 'Axial slices (drives the bottom slider)',
+        ),
+        ButtonSegment(
+          value: ActiveViewport.sagittal,
+          label: Text('Sag'),
+          tooltip: 'Sagittal slices (drives the bottom slider)',
+        ),
+        ButtonSegment(
+          value: ActiveViewport.coronal,
+          label: Text('Cor'),
+          tooltip: 'Coronal slices (drives the bottom slider)',
+        ),
+      ],
+      selected: {active},
+      showSelectedIcon: false,
+      onSelectionChanged: (selection) {
+        final value = selection.first;
+        if (value != ActiveViewport.volume3d) {
+          onSelected(value);
+        }
+      },
+    );
   }
 }

@@ -378,7 +378,11 @@ class _ViewportMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.image_search, size: 42, color: Color(0xFF6E858E)),
+            const Icon(
+              Icons.image_search,
+              size: 42,
+              color: Color(0xFF6E858E),
+            ),
             const SizedBox(height: 12),
             Text(
               message,

@@ -188,11 +188,17 @@ class _SeriesTile extends StatelessWidget {
     }
     final first = series.instances.first;
     final spacing = first.metadata.pixelSpacing;
+    final pixelData = first.metadata.pixelData;
+    final colorLabel = pixelData.isColor
+        ? ' color'
+        : pixelData.isPaletteColor
+            ? ' palette'
+            : '';
     final size = '${first.metadata.columns}x${first.metadata.rows}';
     if (spacing == null) {
-      return size;
+      return '$size$colorLabel';
     }
-    return '$size, ${spacing.columnMm.toStringAsFixed(2)}x${spacing.rowMm.toStringAsFixed(2)} mm';
+    return '$size$colorLabel, ${spacing.columnMm.toStringAsFixed(2)}x${spacing.rowMm.toStringAsFixed(2)} mm';
   }
 }
 

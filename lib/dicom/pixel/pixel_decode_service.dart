@@ -93,10 +93,20 @@ class PixelDecodeRequest {
 }
 
 DecodedSlice decodeInBackground(PixelDecodeRequest request) {
-  return const PixelDecoder().decodeNativeGrayscale16(
-    metadata: request.instance.metadata,
-    pixelBytes: request.instance.pixelDataBytes ?? Uint8List(0),
-  );
+  const decoder = PixelDecoder();
+  final metadata = request.instance.metadata;
+  final bytes = request.instance.pixelDataBytes ?? Uint8List(0);
+  if (metadata.pixelData.isColor) {
+    return decoder.decodeNativeColor(metadata: metadata, pixelBytes: bytes);
+  }
+  if (metadata.pixelData.isPaletteColor) {
+    return decoder.decodePaletteColor(
+      metadata: metadata,
+      pixelBytes: bytes,
+      lut: request.instance.paletteLut,
+    );
+  }
+  return decoder.decodeNativeGrayscale16(metadata: metadata, pixelBytes: bytes);
 }
 
 class PixelDecodeService {
@@ -110,11 +120,7 @@ class PixelDecodeService {
   final PixelDecoder _decoder;
 
   DecodedSlice decode(PixelDecodeRequest request) {
-    final cacheKey = DecodedSliceKey(
-      request.instance.sopInstanceUid,
-      request.windowCenter,
-      request.windowWidth,
-    );
+    final cacheKey = _keyFor(request);
     final cached = _cache.get(cacheKey);
     if (cached != null) {
       return cached;
@@ -123,12 +129,44 @@ class PixelDecodeService {
     if (bytes == null) {
       throw const PixelDecodeException('Selected instance has no Pixel Data.');
     }
-    final decoded = _decoder.decodeNativeGrayscale16(
-      metadata: request.instance.metadata,
-      pixelBytes: bytes,
-    );
+    final metadata = request.instance.metadata;
+    final pixelData = metadata.pixelData;
+    final DecodedSlice decoded;
+    if (pixelData.isColor) {
+      decoded = _decoder.decodeNativeColor(
+        metadata: metadata,
+        pixelBytes: bytes,
+      );
+    } else if (pixelData.isPaletteColor) {
+      decoded = _decoder.decodePaletteColor(
+        metadata: metadata,
+        pixelBytes: bytes,
+        lut: request.instance.paletteLut,
+      );
+    } else {
+      decoded = _decoder.decodeNativeGrayscale16(
+        metadata: metadata,
+        pixelBytes: bytes,
+      );
+    }
     _cache.put(cacheKey, decoded);
     return decoded;
+  }
+
+  DecodedSliceKey _keyFor(PixelDecodeRequest request) {
+    if (request.instance.metadata.pixelData.isColor ||
+        request.instance.metadata.pixelData.isPaletteColor) {
+      return DecodedSliceKey(
+        request.instance.sopInstanceUid,
+        0,
+        0,
+      );
+    }
+    return DecodedSliceKey(
+      request.instance.sopInstanceUid,
+      request.windowCenter,
+      request.windowWidth,
+    );
   }
 
   void invalidate(String sopInstanceUid) {

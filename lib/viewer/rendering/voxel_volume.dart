@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:dicom_viewer/dicom/domain/dicom_models.dart';
+import 'package:dicom_viewer/dicom/pixel/decoded_slice.dart';
 import 'package:dicom_viewer/dicom/pixel/pixel_decoder.dart';
 
 class VoxelVolume {
@@ -72,6 +73,10 @@ class VoxelVolumeBuilder {
     }
     final sorted = _sortByPosition(series.instances);
     final first = sorted.first;
+    if (first.metadata.pixelData.isColor ||
+        first.metadata.pixelData.isPaletteColor) {
+      return _buildLuminanceVolume(sorted, decoder);
+    }
     final rows = first.metadata.rows;
     final columns = first.metadata.columns;
     if (rows <= 0 || columns <= 0) {
@@ -138,6 +143,95 @@ class VoxelVolumeBuilder {
       minValue: minValue.isFinite ? minValue : 0,
       maxValue: maxValue.isFinite ? maxValue : 0,
       seriesInstanceUid: series.instanceUid,
+    );
+  }
+
+  VoxelVolume _buildLuminanceVolume(
+    List<DicomInstance> sorted,
+    PixelDecoder decoder,
+  ) {
+    final first = sorted.first;
+    final rows = first.metadata.rows;
+    final columns = first.metadata.columns;
+    if (rows <= 0 || columns <= 0) {
+      throw const VoxelVolumeException('Series has invalid dimensions.');
+    }
+    final pixelSpacing = first.metadata.pixelSpacing;
+    if (pixelSpacing == null) {
+      throw const VoxelVolumeException('Series is missing Pixel Spacing.');
+    }
+    final orientation = first.metadata.imageOrientation;
+    if (orientation == null) {
+      throw const VoxelVolumeException('Series is missing Image Orientation.');
+    }
+    final width = columns;
+    final height = rows;
+    final depth = sorted.length;
+    final buffer = Float32List(width * height * depth);
+    var minValue = double.infinity;
+    var maxValue = double.negativeInfinity;
+
+    for (var z = 0; z < depth; z += 1) {
+      final instance = sorted[z];
+      final bytes = instance.pixelDataBytes;
+      if (bytes == null) {
+        throw VoxelVolumeException(
+          'Instance ${instance.sopInstanceUid} has no Pixel Data.',
+        );
+      }
+      final pixelData = instance.metadata.pixelData;
+      final DecodedSlice decoded;
+      if (pixelData.isColor) {
+        decoded = decoder.decodeNativeColor(
+          metadata: instance.metadata,
+          pixelBytes: bytes,
+        );
+      } else {
+        decoded = decoder.decodePaletteColor(
+          metadata: instance.metadata,
+          pixelBytes: bytes,
+          lut: instance.paletteLut,
+        );
+      }
+      if (decoded.width != width || decoded.height != height) {
+        throw VoxelVolumeException(
+          'Series geometry mismatch: ${decoded.width}x${decoded.height} vs ${width}x$height.',
+        );
+      }
+      final channels = decoded.channels;
+      final pixelCount = width * height;
+      final sliceOffset = z * pixelCount;
+      for (var i = 0; i < pixelCount; i += 1) {
+        final double y;
+        if (channels >= 3) {
+          y = 0.299 * decoded.values[i * 3] +
+              0.587 * decoded.values[i * 3 + 1] +
+              0.114 * decoded.values[i * 3 + 2];
+        } else {
+          y = decoded.values[i];
+        }
+        buffer[sliceOffset + i] = y;
+        if (y < minValue) minValue = y;
+        if (y > maxValue) maxValue = y;
+      }
+    }
+
+    final origin = first.metadata.imagePosition ?? const ImagePosition(0, 0, 0);
+    final spacingZ = _sliceSpacing(sorted);
+
+    return VoxelVolume(
+      width: width,
+      height: height,
+      depth: depth,
+      spacingX: pixelSpacing.columnMm,
+      spacingY: pixelSpacing.rowMm,
+      spacingZ: spacingZ,
+      origin: origin,
+      direction: orientation,
+      values: buffer,
+      minValue: minValue.isFinite ? minValue : 0,
+      maxValue: maxValue.isFinite ? maxValue : 0,
+      seriesInstanceUid: sorted.first.sopInstanceUid,
     );
   }
 

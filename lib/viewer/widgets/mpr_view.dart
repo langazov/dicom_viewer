@@ -114,8 +114,9 @@ class _MprViewState extends State<MprView> {
   static int _maxNormal(VoxelVolume v, MprPlane plane) {
     switch (plane) {
       case MprPlane.axial:
-      case MprPlane.coronal:
         return v.depth;
+      case MprPlane.coronal:
+        return v.height;
       case MprPlane.sagittal:
         return v.width;
     }

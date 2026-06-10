@@ -76,6 +76,7 @@ class DicomInstance {
     required this.filePath,
     required this.metadata,
     this.pixelDataBytes,
+    this.paletteLut,
   });
 
   final String sopClassUid;
@@ -84,6 +85,21 @@ class DicomInstance {
   final String filePath;
   final DicomMetadata metadata;
   final Uint8List? pixelDataBytes;
+  final PaletteColorLut? paletteLut;
+}
+
+class PaletteColorLut {
+  const PaletteColorLut({
+    required this.red,
+    required this.green,
+    required this.blue,
+    required this.bitsPerEntry,
+  });
+
+  final Uint8List red;
+  final Uint8List green;
+  final Uint8List blue;
+  final int bitsPerEntry;
 }
 
 class DicomMetadata {
@@ -122,7 +138,7 @@ class DicomMetadata {
   }
 
   bool get isSupportedMvp {
-    return pixelData.isSupportedMvpGrayscale && transferSyntax.isSupportedMvp;
+    return pixelData.isSupportedMvp && transferSyntax.isSupportedMvp;
   }
 }
 
@@ -134,6 +150,7 @@ class PixelDataDescriptor {
     required this.highBit,
     required this.pixelRepresentation,
     required this.photometricInterpretation,
+    this.planarConfiguration = 0,
   });
 
   final int samplesPerPixel;
@@ -142,12 +159,56 @@ class PixelDataDescriptor {
   final int highBit;
   final PixelRepresentation pixelRepresentation;
   final String photometricInterpretation;
+  final int planarConfiguration;
 
-  bool get isSupportedMvpGrayscale {
+  bool get isGrayscale {
     return samplesPerPixel == 1 &&
-        bitsAllocated == 16 &&
         (photometricInterpretation == 'MONOCHROME1' ||
             photometricInterpretation == 'MONOCHROME2');
+  }
+
+  bool get isPaletteColor {
+    return samplesPerPixel == 1 &&
+        photometricInterpretation == 'PALETTE COLOR';
+  }
+
+  bool get isRgb {
+    return samplesPerPixel == 3 &&
+        bitsAllocated == 8 &&
+        (photometricInterpretation == 'RGB' ||
+            photometricInterpretation == 'YBR_FULL');
+  }
+
+  bool get isRgb16 {
+    return samplesPerPixel == 3 &&
+        bitsAllocated == 16 &&
+        photometricInterpretation == 'RGB';
+  }
+
+  bool get isColor => isRgb || isRgb16;
+
+  bool get isSupportedMvpGrayscale {
+    if (isGrayscale) {
+      return bitsAllocated == 16;
+    }
+    if (isPaletteColor) {
+      return bitsAllocated == 8;
+    }
+    return false;
+  }
+
+  bool get isSupportedMvpColor {
+    return isRgb || isRgb16;
+  }
+
+  bool get isSupportedMvp {
+    return isSupportedMvpGrayscale || isSupportedMvpColor;
+  }
+
+  int get channelCount {
+    if (isGrayscale || isPaletteColor) return 1;
+    if (isRgb || isRgb16) return 3;
+    return samplesPerPixel;
   }
 }
 

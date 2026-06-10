@@ -7,6 +7,7 @@ class DecodedSlice {
     required this.values,
     required this.minValue,
     required this.maxValue,
+    this.channels = 1,
   });
 
   final int width;
@@ -14,4 +15,20 @@ class DecodedSlice {
   final Float32List values;
   final double minValue;
   final double maxValue;
+  final int channels;
+
+  bool get isColor => channels >= 3;
+
+  Float32List channelData(int channel) {
+    if (channels == 1) {
+      return values;
+    }
+    final length = width * height;
+    final out = Float32List(length);
+    final stride = channels;
+    for (var i = 0; i < length; i += 1) {
+      out[i] = values[i * stride + channel];
+    }
+    return out;
+  }
 }

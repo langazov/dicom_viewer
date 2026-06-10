@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:dicom_viewer/dicom/domain/dicom_models.dart';
+import 'package:dicom_viewer/dicom/pixel/decoded_slice.dart';
 import 'package:dicom_viewer/dicom/pixel/pixel_decoder.dart';
 import 'package:dicom_viewer/viewer/rendering/window_level.dart';
 
@@ -11,6 +12,7 @@ class VolumePointCloud {
     required this.heightMm,
     required this.depthMm,
     required this.sliceCount,
+    this.skippedReason,
   });
 
   final List<VolumePoint> points;
@@ -18,6 +20,7 @@ class VolumePointCloud {
   final double heightMm;
   final double depthMm;
   final int sliceCount;
+  final String? skippedReason;
 
   bool get isEmpty => points.isEmpty;
 }
@@ -73,8 +76,7 @@ class VolumePointCloudBuilder {
     final sliceSpacing = _sliceSpacing(instances);
     final widthMm = firstMetadata.columns * columnSpacing;
     final heightMm = firstMetadata.rows * rowSpacing;
-    final depthMm = max(1, instances.length - 1) * sliceSpacing;
-    final points = <VolumePoint>[];
+    final depthMm = max(1, instances.length - 1) * sliceSpacing;    final points = <VolumePoint>[];
     final decoder = const PixelDecoder();
 
     for (var sliceIndex = 0; sliceIndex < instances.length; sliceIndex += 1) {
@@ -84,10 +86,25 @@ class VolumePointCloudBuilder {
         continue;
       }
 
-      final decoded = decoder.decodeNativeGrayscale16(
-        metadata: instance.metadata,
-        pixelBytes: pixelBytes,
-      );
+      final pixelData = instance.metadata.pixelData;
+      final DecodedSlice decoded;
+      if (pixelData.isColor) {
+        decoded = decoder.decodeNativeColor(
+          metadata: instance.metadata,
+          pixelBytes: pixelBytes,
+        );
+      } else if (pixelData.isPaletteColor) {
+        decoded = decoder.decodePaletteColor(
+          metadata: instance.metadata,
+          pixelBytes: pixelBytes,
+          lut: instance.paletteLut,
+        );
+      } else {
+        decoded = decoder.decodeNativeGrayscale16(
+          metadata: instance.metadata,
+          pixelBytes: pixelBytes,
+        );
+      }
       final windowLevel = _windowLevel(
         instance,
         decoded.minValue,
@@ -98,10 +115,20 @@ class VolumePointCloudBuilder {
         max(decoded.width, decoded.height) ~/ targetSamplesPerAxis,
       );
       final z = _centered(sliceIndex * sliceSpacing, depthMm);
+      final channels = decoded.channels;
 
       for (var y = 0; y < decoded.height; y += stride) {
         for (var x = 0; x < decoded.width; x += stride) {
-          final value = decoded.values[y * decoded.width + x];
+          final i = y * decoded.width + x;
+          final double value;
+          if (channels >= 3) {
+            value =
+                0.299 * decoded.values[i * 3] +
+                    0.587 * decoded.values[i * 3 + 1] +
+                    0.114 * decoded.values[i * 3 + 2];
+          } else {
+            value = decoded.values[i];
+          }
           final normalized = windowLevel.normalize(value);
           if (normalized < opacityThreshold) {
             continue;
