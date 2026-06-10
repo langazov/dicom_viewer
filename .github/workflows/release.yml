@@ -227,29 +227,3 @@ jobs:
             | 📱 iOS | `dicom-viewer-ios.ipa` | Unsigned — sideload via AltStore or Sideloadly |
             | 🤖 Android | `dicom-viewer-android.apk` | Enable *Install from unknown sources* first |
 
-  # ─────────────────────────── GitHub Pages ────────────────────────────────
-
-  deploy-pages:
-    name: Deploy Landing Page
-    needs: release
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build site
-        run: |
-          mkdir _site
-          sed "s|__GITHUB_REPOSITORY__|${{ github.repository }}|g" \
-            .github/pages/index.html > _site/index.html
-
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-
-      - id: deploy
-        uses: actions/deploy-pages@v4
