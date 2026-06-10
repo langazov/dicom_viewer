@@ -23,6 +23,9 @@ class MprView extends StatefulWidget {
     this.bilateralRadius = 2,
     this.bilateralSigma = 0.12,
     this.sharpenAmount = 0.35,
+    this.anisotropicIterations = 5,
+    this.anisotropicKappa = 25.0,
+    this.edgeUpscaleStrength = 1.0,
     this.zoom = 1,
     this.panX = 0,
     this.panY = 0,
@@ -48,6 +51,9 @@ class MprView extends StatefulWidget {
   final int bilateralRadius;
   final double bilateralSigma;
   final double sharpenAmount;
+  final int anisotropicIterations;
+  final double anisotropicKappa;
+  final double edgeUpscaleStrength;
   final double zoom;
   final double panX;
   final double panY;
@@ -115,6 +121,9 @@ class _MprViewState extends State<MprView> {
       bilateralRadius: widget.bilateralRadius,
       bilateralSigma: widget.bilateralSigma,
       sharpenAmount: widget.sharpenAmount,
+      anisotropicIterations: widget.anisotropicIterations,
+      anisotropicKappa: widget.anisotropicKappa,
+      edgeUpscaleStrength: widget.edgeUpscaleStrength,
     );
     return SliceImageView(
       buffer: buffer,

@@ -13,14 +13,18 @@ class DicomImportService {
     final skippedFiles = <DicomImportFailure>[];
 
     for (final source in sources) {
+      if (_shouldIgnoreSource(source)) {
+        continue;
+      }
       final result = parser.parseBytes(source.bytes, filePath: source.filePath);
       final file = result.file;
       if (file == null) {
+        final error = result.error ?? 'Unknown DICOM import error.';
+        if (_isNonImageDicomObject(error)) {
+          continue;
+        }
         skippedFiles.add(
-          DicomImportFailure(
-            filePath: source.filePath,
-            reason: result.error ?? 'Unknown DICOM import error.',
-          ),
+          DicomImportFailure(filePath: source.filePath, reason: error),
         );
       } else {
         parsedFiles.add(file);
@@ -31,6 +35,37 @@ class DicomImportService {
       patients: _groupPatients(parsedFiles),
       skippedFiles: skippedFiles,
     );
+  }
+
+  bool _shouldIgnoreSource(DicomImportSource source) {
+    final normalizedPath = source.filePath.replaceAll(r'\', '/');
+    final segments = normalizedPath.split('/');
+    if (segments.any((segment) => segment == '__MACOSX')) {
+      return true;
+    }
+    final fileName = segments.isEmpty ? normalizedPath : segments.last;
+    if (fileName.isEmpty) {
+      return true;
+    }
+    final lowerName = fileName.toLowerCase();
+    return fileName.startsWith('.') ||
+        lowerName == 'thumbs.db' ||
+        lowerName == 'desktop.ini';
+  }
+
+  bool _isNonImageDicomObject(String error) {
+    const nonImageAttributes = [
+      'Rows',
+      'Columns',
+      'SamplesPerPixel',
+      'BitsAllocated',
+      'BitsStored',
+      'HighBit',
+      'PixelRepresentation',
+      'PhotometricInterpretation',
+    ];
+    return error.startsWith('Missing required DICOM attribute ') &&
+        nonImageAttributes.any(error.contains);
   }
 
   List<DicomPatient> _groupPatients(List<ParsedDicomFile> parsedFiles) {

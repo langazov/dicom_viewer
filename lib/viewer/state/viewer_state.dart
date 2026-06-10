@@ -56,6 +56,9 @@ class ViewerState {
     this.bilateralRadius = 2,
     this.bilateralSigma = 0.12,
     this.sharpenAmount = 0.35,
+    this.anisotropicIterations = 5,
+    this.anisotropicKappa = 25.0,
+    this.edgeUpscaleStrength = 1.0,
     this.sliceIndex = 0,
     this.sagittalIndex = 0,
     this.coronalIndex = 0,
@@ -88,6 +91,9 @@ class ViewerState {
   final int bilateralRadius;
   final double bilateralSigma;
   final double sharpenAmount;
+  final int anisotropicIterations;
+  final double anisotropicKappa;
+  final double edgeUpscaleStrength;
   final int sliceIndex;
   final int sagittalIndex;
   final int coronalIndex;
@@ -263,6 +269,9 @@ class ViewerState {
     int? bilateralRadius,
     double? bilateralSigma,
     double? sharpenAmount,
+    int? anisotropicIterations,
+    double? anisotropicKappa,
+    double? edgeUpscaleStrength,
     int? sliceIndex,
     int? sagittalIndex,
     int? coronalIndex,
@@ -296,6 +305,9 @@ class ViewerState {
       bilateralRadius: bilateralRadius ?? this.bilateralRadius,
       bilateralSigma: bilateralSigma ?? this.bilateralSigma,
       sharpenAmount: sharpenAmount ?? this.sharpenAmount,
+      anisotropicIterations: anisotropicIterations ?? this.anisotropicIterations,
+      anisotropicKappa: anisotropicKappa ?? this.anisotropicKappa,
+      edgeUpscaleStrength: edgeUpscaleStrength ?? this.edgeUpscaleStrength,
       sliceIndex: sliceIndex ?? this.sliceIndex,
       sagittalIndex: sagittalIndex ?? this.sagittalIndex,
       coronalIndex: coronalIndex ?? this.coronalIndex,

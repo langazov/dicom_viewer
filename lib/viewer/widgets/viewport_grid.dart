@@ -281,6 +281,9 @@ class _AxialSliceContent extends StatelessWidget {
         bilateralRadius: state.bilateralRadius,
         bilateralSigma: state.bilateralSigma,
         sharpenAmount: state.sharpenAmount,
+        anisotropicIterations: state.anisotropicIterations,
+        anisotropicKappa: state.anisotropicKappa,
+        edgeUpscaleStrength: state.edgeUpscaleStrength,
       );
 
       return MouseRegion(
@@ -526,6 +529,9 @@ class _MprPlaneContentState extends State<_MprPlaneContent> {
       bilateralRadius: widget.state.bilateralRadius,
       bilateralSigma: widget.state.bilateralSigma,
       sharpenAmount: widget.state.sharpenAmount,
+      anisotropicIterations: widget.state.anisotropicIterations,
+      anisotropicKappa: widget.state.anisotropicKappa,
+      edgeUpscaleStrength: widget.state.edgeUpscaleStrength,
       zoom: transform.zoom,
       panX: transform.panX,
       panY: transform.panY,

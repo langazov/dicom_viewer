@@ -51,6 +51,44 @@ void main() {
     expect(result.skippedFiles.first.filePath, '/study/readme.txt');
     expect(result.hasFailures, isTrue);
   });
+
+  test('ignores hidden system files during import', () {
+    final result = service.importSources([
+      DicomImportSource(
+        filePath: '/study/slice1.dcm',
+        bytes: _dicomBytes(instanceNumber: 1, sopInstanceUid: '1.2.3.1'),
+      ),
+      DicomImportSource(
+        filePath: '/study/.DS_Store',
+        bytes: Uint8List.fromList([0, 1, 2, 3]),
+      ),
+      DicomImportSource(
+        filePath: '/study/Thumbs.db',
+        bytes: Uint8List.fromList([0, 1, 2, 3]),
+      ),
+    ]);
+
+    expect(result.importedInstances, hasLength(1));
+    expect(result.skippedFiles, isEmpty);
+    expect(result.hasFailures, isFalse);
+  });
+
+  test('ignores non-image DICOM objects missing pixel attributes', () {
+    final result = service.importSources([
+      DicomImportSource(
+        filePath: '/study/slice1.dcm',
+        bytes: _dicomBytes(instanceNumber: 1, sopInstanceUid: '1.2.3.1'),
+      ),
+      DicomImportSource(
+        filePath: '/study/presentation-state.dcm',
+        bytes: _nonImageDicomBytes(),
+      ),
+    ]);
+
+    expect(result.importedInstances, hasLength(1));
+    expect(result.skippedFiles, isEmpty);
+    expect(result.hasFailures, isFalse);
+  });
 }
 
 Uint8List _dicomBytes({
@@ -86,6 +124,30 @@ Uint8List _dicomBytes({
     _explicitUint16(DicomTag.bitsStored, 'US', 12),
     _explicitUint16(DicomTag.highBit, 'US', 11),
     _explicitUint16(DicomTag.pixelRepresentation, 'US', 0),
+  ]) {
+    builder.add(element);
+  }
+
+  return builder.toBytes();
+}
+
+Uint8List _nonImageDicomBytes() {
+  final builder = BytesBuilder();
+  builder.add(Uint8List(128));
+  builder.add(ascii.encode('DICM'));
+  builder.add(
+    _explicitText(DicomTag.transferSyntaxUid, 'UI', '1.2.840.10008.1.2.1'),
+  );
+  for (final element in [
+    _explicitText(DicomTag.patientId, 'LO', 'P123'),
+    _explicitText(DicomTag.patientName, 'PN', 'Test^Patient'),
+    _explicitText(DicomTag.studyDescription, 'LO', 'Brain MRI'),
+    _explicitText(DicomTag.seriesDescription, 'LO', 'Presentation state'),
+    _explicitText(DicomTag.modality, 'CS', 'PR'),
+    _explicitText(DicomTag.sopClassUid, 'UI', '1.2.840.10008.5.1.4.1.1.11.1'),
+    _explicitText(DicomTag.sopInstanceUid, 'UI', '1.2.840.1'),
+    _explicitText(DicomTag.studyInstanceUid, 'UI', '1.2.3'),
+    _explicitText(DicomTag.seriesInstanceUid, 'UI', '1.2.3.5'),
   ]) {
     builder.add(element);
   }

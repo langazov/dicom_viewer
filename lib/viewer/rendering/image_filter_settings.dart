@@ -1,4 +1,11 @@
-enum ImageFilterMode { none, bilateral, sharpen, bilateralSharpen }
+enum ImageFilterMode {
+  none,
+  bilateral,
+  sharpen,
+  bilateralSharpen,
+  anisotropicDiffusion,
+  edgeAwareUpscale,
+}
 
 extension ImageFilterModeLabel on ImageFilterMode {
   String get label {
@@ -7,6 +14,8 @@ extension ImageFilterModeLabel on ImageFilterMode {
       ImageFilterMode.bilateral => 'Bilateral',
       ImageFilterMode.sharpen => 'Sharpen',
       ImageFilterMode.bilateralSharpen => 'Bilateral + sharpen',
+      ImageFilterMode.anisotropicDiffusion => 'Anisotropic diffusion',
+      ImageFilterMode.edgeAwareUpscale => 'Edge-aware upscale',
     };
   }
 }

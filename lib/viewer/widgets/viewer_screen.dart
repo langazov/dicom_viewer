@@ -204,6 +204,30 @@ class _ViewerScreenState extends State<ViewerScreen> {
     });
   }
 
+  void _setAnisotropicIterations(int iterations) {
+    setState(() {
+      _state = _state.copyWith(
+        anisotropicIterations: iterations.clamp(1, 15),
+      );
+    });
+  }
+
+  void _setAnisotropicKappa(double kappa) {
+    setState(() {
+      _state = _state.copyWith(
+        anisotropicKappa: kappa.clamp(5.0, 100.0),
+      );
+    });
+  }
+
+  void _setEdgeUpscaleStrength(double strength) {
+    setState(() {
+      _state = _state.copyWith(
+        edgeUpscaleStrength: strength.clamp(0.0, 2.0),
+      );
+    });
+  }
+
   void _resetImageFilters() {
     setState(() {
       _state = _state.copyWith(
@@ -214,6 +238,9 @@ class _ViewerScreenState extends State<ViewerScreen> {
         bilateralRadius: 2,
         bilateralSigma: 0.12,
         sharpenAmount: 0.35,
+        anisotropicIterations: 5,
+        anisotropicKappa: 25.0,
+        edgeUpscaleStrength: 1.0,
       );
     });
   }
@@ -378,6 +405,9 @@ class _ViewerScreenState extends State<ViewerScreen> {
               onBilateralRadiusChanged: _setBilateralRadius,
               onBilateralSigmaChanged: _setBilateralSigma,
               onSharpenAmountChanged: _setSharpenAmount,
+              onAnisotropicIterationsChanged: _setAnisotropicIterations,
+              onAnisotropicKappaChanged: _setAnisotropicKappa,
+              onEdgeUpscaleStrengthChanged: _setEdgeUpscaleStrength,
               onResetImageFilters: _resetImageFilters,
             );
           }
@@ -404,6 +434,9 @@ class _ViewerScreenState extends State<ViewerScreen> {
               onBilateralRadiusChanged: _setBilateralRadius,
               onBilateralSigmaChanged: _setBilateralSigma,
               onSharpenAmountChanged: _setSharpenAmount,
+              onAnisotropicIterationsChanged: _setAnisotropicIterations,
+              onAnisotropicKappaChanged: _setAnisotropicKappa,
+              onEdgeUpscaleStrengthChanged: _setEdgeUpscaleStrength,
               onResetImageFilters: _resetImageFilters,
             );
           }
@@ -429,6 +462,9 @@ class _ViewerScreenState extends State<ViewerScreen> {
             onBilateralRadiusChanged: _setBilateralRadius,
             onBilateralSigmaChanged: _setBilateralSigma,
             onSharpenAmountChanged: _setSharpenAmount,
+            onAnisotropicIterationsChanged: _setAnisotropicIterations,
+            onAnisotropicKappaChanged: _setAnisotropicKappa,
+            onEdgeUpscaleStrengthChanged: _setEdgeUpscaleStrength,
             onResetImageFilters: _resetImageFilters,
           );
         },
@@ -459,6 +495,9 @@ class _DesktopWorkspace extends StatelessWidget {
     required this.onBilateralRadiusChanged,
     required this.onBilateralSigmaChanged,
     required this.onSharpenAmountChanged,
+    required this.onAnisotropicIterationsChanged,
+    required this.onAnisotropicKappaChanged,
+    required this.onEdgeUpscaleStrengthChanged,
     required this.onResetImageFilters,
   });
 
@@ -482,6 +521,9 @@ class _DesktopWorkspace extends StatelessWidget {
   final ValueChanged<int> onBilateralRadiusChanged;
   final ValueChanged<double> onBilateralSigmaChanged;
   final ValueChanged<double> onSharpenAmountChanged;
+  final ValueChanged<int> onAnisotropicIterationsChanged;
+  final ValueChanged<double> onAnisotropicKappaChanged;
+  final ValueChanged<double> onEdgeUpscaleStrengthChanged;
   final VoidCallback onResetImageFilters;
 
   @override
@@ -531,6 +573,11 @@ class _DesktopWorkspace extends StatelessWidget {
                         onBilateralRadiusChanged: onBilateralRadiusChanged,
                         onBilateralSigmaChanged: onBilateralSigmaChanged,
                         onSharpenAmountChanged: onSharpenAmountChanged,
+                        onAnisotropicIterationsChanged:
+                            onAnisotropicIterationsChanged,
+                        onAnisotropicKappaChanged: onAnisotropicKappaChanged,
+                        onEdgeUpscaleStrengthChanged:
+                            onEdgeUpscaleStrengthChanged,
                         onResetImageFilters: onResetImageFilters,
                       ),
                     ),
@@ -574,6 +621,9 @@ class _TabletWorkspace extends StatelessWidget {
     required this.onBilateralRadiusChanged,
     required this.onBilateralSigmaChanged,
     required this.onSharpenAmountChanged,
+    required this.onAnisotropicIterationsChanged,
+    required this.onAnisotropicKappaChanged,
+    required this.onEdgeUpscaleStrengthChanged,
     required this.onResetImageFilters,
   });
 
@@ -597,6 +647,9 @@ class _TabletWorkspace extends StatelessWidget {
   final ValueChanged<int> onBilateralRadiusChanged;
   final ValueChanged<double> onBilateralSigmaChanged;
   final ValueChanged<double> onSharpenAmountChanged;
+  final ValueChanged<int> onAnisotropicIterationsChanged;
+  final ValueChanged<double> onAnisotropicKappaChanged;
+  final ValueChanged<double> onEdgeUpscaleStrengthChanged;
   final VoidCallback onResetImageFilters;
 
   @override
@@ -636,6 +689,11 @@ class _TabletWorkspace extends StatelessWidget {
                         onBilateralRadiusChanged: onBilateralRadiusChanged,
                         onBilateralSigmaChanged: onBilateralSigmaChanged,
                         onSharpenAmountChanged: onSharpenAmountChanged,
+                        onAnisotropicIterationsChanged:
+                            onAnisotropicIterationsChanged,
+                        onAnisotropicKappaChanged: onAnisotropicKappaChanged,
+                        onEdgeUpscaleStrengthChanged:
+                            onEdgeUpscaleStrengthChanged,
                         onResetImageFilters: onResetImageFilters,
                       ),
                     ),
@@ -683,6 +741,9 @@ class _PhoneWorkspace extends StatelessWidget {
     required this.onBilateralRadiusChanged,
     required this.onBilateralSigmaChanged,
     required this.onSharpenAmountChanged,
+    required this.onAnisotropicIterationsChanged,
+    required this.onAnisotropicKappaChanged,
+    required this.onEdgeUpscaleStrengthChanged,
     required this.onResetImageFilters,
   });
 
@@ -703,6 +764,9 @@ class _PhoneWorkspace extends StatelessWidget {
   final ValueChanged<int> onBilateralRadiusChanged;
   final ValueChanged<double> onBilateralSigmaChanged;
   final ValueChanged<double> onSharpenAmountChanged;
+  final ValueChanged<int> onAnisotropicIterationsChanged;
+  final ValueChanged<double> onAnisotropicKappaChanged;
+  final ValueChanged<double> onEdgeUpscaleStrengthChanged;
   final VoidCallback onResetImageFilters;
 
   @override
@@ -735,6 +799,9 @@ class _PhoneWorkspace extends StatelessWidget {
             onBilateralRadiusChanged: onBilateralRadiusChanged,
             onBilateralSigmaChanged: onBilateralSigmaChanged,
             onSharpenAmountChanged: onSharpenAmountChanged,
+            onAnisotropicIterationsChanged: onAnisotropicIterationsChanged,
+            onAnisotropicKappaChanged: onAnisotropicKappaChanged,
+            onEdgeUpscaleStrengthChanged: onEdgeUpscaleStrengthChanged,
             onResetImageFilters: onResetImageFilters,
           ),
         ),

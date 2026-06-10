@@ -14,6 +14,9 @@ class ToolPanel extends StatelessWidget {
     required this.onBilateralRadiusChanged,
     required this.onBilateralSigmaChanged,
     required this.onSharpenAmountChanged,
+    required this.onAnisotropicIterationsChanged,
+    required this.onAnisotropicKappaChanged,
+    required this.onEdgeUpscaleStrengthChanged,
     required this.onResetImageFilters,
   });
 
@@ -26,6 +29,9 @@ class ToolPanel extends StatelessWidget {
   final ValueChanged<int> onBilateralRadiusChanged;
   final ValueChanged<double> onBilateralSigmaChanged;
   final ValueChanged<double> onSharpenAmountChanged;
+  final ValueChanged<int> onAnisotropicIterationsChanged;
+  final ValueChanged<double> onAnisotropicKappaChanged;
+  final ValueChanged<double> onEdgeUpscaleStrengthChanged;
   final VoidCallback onResetImageFilters;
 
   @override
@@ -170,6 +176,38 @@ class ToolPanel extends StatelessWidget {
                 max: 1.5,
                 displayValue: state.sharpenAmount.toStringAsFixed(2),
                 onChanged: onSharpenAmountChanged,
+              ),
+            ],
+            if (state.imageFilterMode ==
+                ImageFilterMode.anisotropicDiffusion) ...[
+              const SizedBox(height: 12),
+              _FilterSlider(
+                label: 'Iterations',
+                value: state.anisotropicIterations.toDouble(),
+                min: 1,
+                max: 15,
+                divisions: 14,
+                displayValue: state.anisotropicIterations.toString(),
+                onChanged: (v) => onAnisotropicIterationsChanged(v.round()),
+              ),
+              _FilterSlider(
+                label: 'Conductance (κ)',
+                value: state.anisotropicKappa,
+                min: 5,
+                max: 100,
+                displayValue: state.anisotropicKappa.toStringAsFixed(0),
+                onChanged: onAnisotropicKappaChanged,
+              ),
+            ],
+            if (state.imageFilterMode == ImageFilterMode.edgeAwareUpscale) ...[
+              const SizedBox(height: 12),
+              _FilterSlider(
+                label: 'Edge strength',
+                value: state.edgeUpscaleStrength,
+                min: 0,
+                max: 2,
+                displayValue: state.edgeUpscaleStrength.toStringAsFixed(2),
+                onChanged: onEdgeUpscaleStrengthChanged,
               ),
             ],
           ],

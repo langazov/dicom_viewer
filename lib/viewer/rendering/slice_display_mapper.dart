@@ -19,6 +19,9 @@ class SliceDisplayMapper {
     int bilateralRadius = 2,
     double bilateralSigma = 0.12,
     double sharpenAmount = 0.35,
+    int anisotropicIterations = 5,
+    double anisotropicKappa = 25.0,
+    double edgeUpscaleStrength = 1.0,
   }) {
     final buffer = slice.isColor
         ? _mapColor(
@@ -46,6 +49,9 @@ class SliceDisplayMapper {
         bilateralRadius: bilateralRadius,
         bilateralSigma: bilateralSigma,
         sharpenAmount: sharpenAmount,
+        anisotropicIterations: anisotropicIterations,
+        anisotropicKappa: anisotropicKappa,
+        edgeUpscaleStrength: edgeUpscaleStrength,
       ),
     );
   }
@@ -154,6 +160,9 @@ class SliceDisplayMapper {
     required int bilateralRadius,
     required double bilateralSigma,
     required double sharpenAmount,
+    required int anisotropicIterations,
+    required double anisotropicKappa,
+    required double edgeUpscaleStrength,
   }) {
     return switch (mode) {
       ImageFilterMode.none => rgba,
@@ -181,6 +190,19 @@ class SliceDisplayMapper {
         width: width,
         height: height,
         amount: sharpenAmount,
+      ),
+      ImageFilterMode.anisotropicDiffusion => _anisotropicDiffusion(
+        rgba,
+        width: width,
+        height: height,
+        iterations: anisotropicIterations,
+        kappa: anisotropicKappa,
+      ),
+      ImageFilterMode.edgeAwareUpscale => _edgeAwareUpscale(
+        rgba,
+        width: width,
+        height: height,
+        strength: edgeUpscaleStrength,
       ),
     };
   }
@@ -287,6 +309,162 @@ class SliceDisplayMapper {
 
   int _sharpenChannel(int source, int blur, double strength) {
     return (source + (source - blur) * strength).round().clamp(0, 255);
+  }
+
+  // Perona-Malik anisotropic diffusion: smooths noise while preserving edges
+  // by limiting diffusion where gradient magnitude exceeds the kappa threshold.
+  Uint8List _anisotropicDiffusion(
+    Uint8List source, {
+    required int width,
+    required int height,
+    required int iterations,
+    required double kappa,
+  }) {
+    final iters = iterations.clamp(1, 15);
+    final k = kappa.clamp(5.0, 100.0);
+    final k2 = k * k;
+    const lambda = 0.25; // stability constant for 4-directional scheme
+
+    // Work in float to avoid accumulation errors across iterations
+    final current = Float32List(source.length);
+    for (var i = 0; i < source.length; i++) {
+      current[i] = source[i].toDouble();
+    }
+
+    final next = Float32List(source.length);
+
+    for (var iter = 0; iter < iters; iter++) {
+      for (var y = 0; y < height; y++) {
+        for (var x = 0; x < width; x++) {
+          final offset = (y * width + x) * 4;
+          for (var c = 0; c < 3; c++) {
+            final center = current[offset + c];
+            // 4-connected neighbours with Neumann boundary (mirror)
+            final north =
+                current[((y - 1).clamp(0, height - 1) * width + x) * 4 + c];
+            final south =
+                current[((y + 1).clamp(0, height - 1) * width + x) * 4 + c];
+            final west =
+                current[(y * width + (x - 1).clamp(0, width - 1)) * 4 + c];
+            final east =
+                current[(y * width + (x + 1).clamp(0, width - 1)) * 4 + c];
+
+            final dN = north - center;
+            final dS = south - center;
+            final dW = west - center;
+            final dE = east - center;
+
+            // Perona-Malik conductance: c(x) = exp(-(|∇I|/κ)²)
+            final cN = exp(-(dN * dN) / k2);
+            final cS = exp(-(dS * dS) / k2);
+            final cW = exp(-(dW * dW) / k2);
+            final cE = exp(-(dE * dE) / k2);
+
+            next[offset + c] =
+                center + lambda * (cN * dN + cS * dS + cW * dW + cE * dE);
+          }
+          next[offset + 3] = current[offset + 3];
+        }
+      }
+      current.setAll(0, next);
+    }
+
+    final output = Uint8List(source.length);
+    for (var i = 0; i < source.length; i++) {
+      output[i] = current[i].round().clamp(0, 255);
+    }
+    return output;
+  }
+
+  // Edge-aware upscale: guided adaptive sharpening that amplifies detail
+  // proportional to local edge magnitude, leaving flat regions untouched.
+  Uint8List _edgeAwareUpscale(
+    Uint8List source, {
+    required int width,
+    required int height,
+    required double strength,
+  }) {
+    final s = strength.clamp(0.0, 2.0);
+    final output = Uint8List(source.length);
+
+    for (var y = 0; y < height; y++) {
+      for (var x = 0; x < width; x++) {
+        final offset = (y * width + x) * 4;
+
+        // Sobel gradient magnitude on luminance
+        final lNW = _luminance(
+          source,
+          ((y - 1).clamp(0, height - 1) * width +
+                  (x - 1).clamp(0, width - 1)) *
+              4,
+        );
+        final lN = _luminance(
+          source,
+          ((y - 1).clamp(0, height - 1) * width + x) * 4,
+        );
+        final lNE = _luminance(
+          source,
+          ((y - 1).clamp(0, height - 1) * width +
+                  (x + 1).clamp(0, width - 1)) *
+              4,
+        );
+        final lW = _luminance(
+          source,
+          (y * width + (x - 1).clamp(0, width - 1)) * 4,
+        );
+        final lE = _luminance(
+          source,
+          (y * width + (x + 1).clamp(0, width - 1)) * 4,
+        );
+        final lSW = _luminance(
+          source,
+          ((y + 1).clamp(0, height - 1) * width +
+                  (x - 1).clamp(0, width - 1)) *
+              4,
+        );
+        final lS = _luminance(
+          source,
+          ((y + 1).clamp(0, height - 1) * width + x) * 4,
+        );
+        final lSE = _luminance(
+          source,
+          ((y + 1).clamp(0, height - 1) * width +
+                  (x + 1).clamp(0, width - 1)) *
+              4,
+        );
+
+        final gx = -lNW + lNE - 2 * lW + 2 * lE - lSW + lSE;
+        final gy = -lNW - 2 * lN - lNE + lSW + 2 * lS + lSE;
+        final edgeMag = sqrt(gx * gx + gy * gy);
+
+        // Edge weight in [0, 1]: 1 at strong edges, 0 in flat regions
+        // Threshold ~30/255 keeps noise from being amplified
+        const threshold = 30.0;
+        final edgeWeight = (edgeMag / (edgeMag + threshold)).clamp(0.0, 1.0);
+
+        // Blend local contrast amplification proportionally to edge strength
+        for (var c = 0; c < 3; c++) {
+          // Compute local 3x3 mean for this channel
+          var sum = 0.0;
+          var count = 0;
+          for (var dy = -1; dy <= 1; dy++) {
+            final ny = (y + dy).clamp(0, height - 1);
+            for (var dx = -1; dx <= 1; dx++) {
+              final nx = (x + dx).clamp(0, width - 1);
+              sum += source[(ny * width + nx) * 4 + c];
+              count++;
+            }
+          }
+          final mean = sum / count;
+          final pixel = source[offset + c].toDouble();
+          final detail = pixel - mean;
+          final sharpened = pixel + detail * s * edgeWeight;
+          output[offset + c] = sharpened.round().clamp(0, 255);
+        }
+        output[offset + 3] = source[offset + 3];
+      }
+    }
+    return output;
   }
 
   double _luminance(Uint8List rgba, int offset) {

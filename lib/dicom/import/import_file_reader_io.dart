@@ -18,6 +18,9 @@ Future<List<DicomImportSource>> readImportDirectorySources(String path) async {
     if (entity is! File) {
       continue;
     }
+    if (_shouldIgnorePath(entity.path)) {
+      continue;
+    }
 
     try {
       sources.add(
@@ -33,4 +36,20 @@ Future<List<DicomImportSource>> readImportDirectorySources(String path) async {
 
   sources.sort((left, right) => left.filePath.compareTo(right.filePath));
   return sources;
+}
+
+bool _shouldIgnorePath(String path) {
+  final normalizedPath = path.replaceAll(r'\', '/');
+  final segments = normalizedPath.split('/');
+  if (segments.any((segment) => segment == '__MACOSX')) {
+    return true;
+  }
+  final fileName = segments.isEmpty ? normalizedPath : segments.last;
+  if (fileName.isEmpty) {
+    return true;
+  }
+  final lowerName = fileName.toLowerCase();
+  return fileName.startsWith('.') ||
+      lowerName == 'thumbs.db' ||
+      lowerName == 'desktop.ini';
 }
