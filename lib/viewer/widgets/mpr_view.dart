@@ -4,7 +4,6 @@ import 'package:dicom_viewer/viewer/rendering/slice_display_mapper.dart';
 import 'package:dicom_viewer/viewer/rendering/voxel_volume.dart';
 import 'package:dicom_viewer/viewer/rendering/window_level.dart';
 import 'package:dicom_viewer/viewer/widgets/slice_image_view.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 class MprView extends StatefulWidget {
@@ -16,7 +15,16 @@ class MprView extends StatefulWidget {
     this.windowCenter = 0,
     this.windowWidth = 1,
     this.invert = false,
+    this.zoom = 1,
+    this.panX = 0,
+    this.panY = 0,
+    this.fitMode = true,
+    this.tool = SliceImageTool.none,
     this.onSliceIndexChanged,
+    this.onZoomChanged,
+    this.onPanChanged,
+    this.onResetRequested,
+    this.onFitRequested,
   });
 
   final VoxelVolume volume;
@@ -25,7 +33,16 @@ class MprView extends StatefulWidget {
   final double windowCenter;
   final double windowWidth;
   final bool invert;
+  final double zoom;
+  final double panX;
+  final double panY;
+  final bool fitMode;
+  final SliceImageTool tool;
   final ValueChanged<int>? onSliceIndexChanged;
+  final ValueChanged<double>? onZoomChanged;
+  final ValueChanged<Offset>? onPanChanged;
+  final VoidCallback? onResetRequested;
+  final VoidCallback? onFitRequested;
 
   @override
   State<MprView> createState() => _MprViewState();
@@ -78,36 +95,29 @@ class _MprViewState extends State<MprView> {
       windowLevel: _windowLevel,
       invert: widget.invert,
     );
-    return Listener(
-      onPointerSignal: (event) {
-        if (event is PointerScrollEvent) {
-          final direction = event.scrollDelta.dy > 0 ? 1 : -1;
-          final next = (_normalIndex + direction).clamp(
-            0,
-            _maxNormal(widget.volume, widget.plane) - 1,
-          );
-          if (next != _normalIndex) {
-            setState(() {
-              _normalIndex = next;
-            });
-            widget.onSliceIndexChanged?.call(next);
-          }
-        }
-      },
-      child: SliceImageView(
-        buffer: buffer,
-        pixelAspectRatio: slice.spacingY == 0
-            ? 1
-            : slice.spacingX / slice.spacingY,
-        sliceLabel: '${_planeLabel(widget.plane)} ${_normalIndex + 1}',
-        scaleBarMm:
-            slice.spacingX *
-            (widget.plane == MprPlane.axial
-                ? widget.volume.width
-                : widget.plane == MprPlane.sagittal
-                ? widget.volume.depth
-                : widget.volume.width),
-      ),
+    return SliceImageView(
+      buffer: buffer,
+      pixelAspectRatio: slice.spacingY == 0
+          ? 1
+          : slice.spacingX / slice.spacingY,
+      zoom: widget.zoom,
+      panX: widget.panX,
+      panY: widget.panY,
+      fitMode: widget.fitMode,
+      tool: widget.tool,
+      measurementUnitMm: slice.spacingY,
+      onZoomChanged: widget.onZoomChanged,
+      onPanChanged: widget.onPanChanged,
+      onResetRequested: widget.onResetRequested,
+      onFitRequested: widget.onFitRequested,
+      sliceLabel: '${_planeLabel(widget.plane)} ${_normalIndex + 1}',
+      scaleBarMm:
+          slice.spacingX *
+          (widget.plane == MprPlane.axial
+              ? widget.volume.width
+              : widget.plane == MprPlane.sagittal
+              ? widget.volume.depth
+              : widget.volume.width),
     );
   }
 

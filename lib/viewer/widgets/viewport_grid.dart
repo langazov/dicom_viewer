@@ -74,6 +74,7 @@ class ViewportGrid extends StatelessWidget {
     return switch (viewport) {
       ActiveViewport.axial => _AxialSliceContent(
         state: state,
+        viewport: ActiveViewport.axial,
         onSliceChanged: onSliceChanged,
         onZoomChanged: onZoomChanged,
         onPanChanged: onPanChanged,
@@ -87,6 +88,10 @@ class ViewportGrid extends StatelessWidget {
         plane: MprPlane.sagittal,
         normalIndex: state.sagittalIndex,
         onSliceIndexChanged: onSliceChanged,
+        onZoomChanged: onZoomChanged,
+        onPanChanged: onPanChanged,
+        onResetViewport: onResetViewport,
+        onFitViewport: onFitViewport,
         showWhenMissing: 'Select a series to view the sagittal plane',
       ),
       ActiveViewport.coronal => _MprPlaneContent(
@@ -94,6 +99,10 @@ class ViewportGrid extends StatelessWidget {
         plane: MprPlane.coronal,
         normalIndex: state.coronalIndex,
         onSliceIndexChanged: onSliceChanged,
+        onZoomChanged: onZoomChanged,
+        onPanChanged: onPanChanged,
+        onResetViewport: onResetViewport,
+        onFitViewport: onFitViewport,
         showWhenMissing: 'Select a series to view the coronal plane',
       ),
       ActiveViewport.volume3d => _VolumeContent(state: state),
@@ -208,6 +217,7 @@ class _ViewportTile extends StatelessWidget {
 class _AxialSliceContent extends StatelessWidget {
   const _AxialSliceContent({
     required this.state,
+    required this.viewport,
     required this.onSliceChanged,
     required this.onZoomChanged,
     required this.onPanChanged,
@@ -218,6 +228,7 @@ class _AxialSliceContent extends StatelessWidget {
   });
 
   final ViewerState state;
+  final ActiveViewport viewport;
   final ValueChanged<int> onSliceChanged;
   final ValueChanged<double> onZoomChanged;
   final ValueChanged<Offset> onPanChanged;
@@ -228,6 +239,8 @@ class _AxialSliceContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final selected = state.activeViewport == viewport;
+    final transform = state.transformFor(viewport);
     final instance = state.selectedInstance;
     if (instance == null) {
       return const _ViewportMessage(message: 'No series selected');
@@ -266,29 +279,7 @@ class _AxialSliceContent extends StatelessWidget {
         child: Listener(
           onPointerSignal: (event) {
             if (event is PointerScrollEvent) {
-              if (event.kind == PointerDeviceKind.mouse &&
-                  (event.scrollDelta.dy.abs() > 0.01 ||
-                      event.scrollDelta.dx.abs() > 0.01)) {
-                if ((event.scrollDelta.dx.abs() + event.scrollDelta.dy.abs()) >
-                    0.01) {
-                  final centerDelta =
-                      effectiveWindowLevel.center + event.scrollDelta.dy * 0.5;
-                  final widthDelta =
-                      (effectiveWindowLevel.width + event.scrollDelta.dx * 0.5)
-                          .clamp(1.0, double.infinity);
-                  onWindowLevelChanged(
-                    WindowLevel(center: centerDelta, width: widthDelta),
-                  );
-                  return;
-                }
-              }
-              if (state.activeTool == ViewerTool.zoom) {
-                onZoomChanged(
-                  state.fitMode
-                      ? 1
-                      : state.zoom * (event.scrollDelta.dy > 0 ? 0.92 : 1.08),
-                );
-              } else if (state.activeTool == ViewerTool.windowLevel) {
+              if (selected && state.activeTool == ViewerTool.windowLevel) {
                 final centerDelta =
                     effectiveWindowLevel.center + event.scrollDelta.dy * 0.5;
                 final widthDelta =
@@ -297,30 +288,28 @@ class _AxialSliceContent extends StatelessWidget {
                 onWindowLevelChanged(
                   WindowLevel(center: centerDelta, width: widthDelta),
                 );
-              } else {
-                final direction = event.scrollDelta.dy > 0 ? 1 : -1;
-                onSliceChanged(state.activeSliceIndex + direction);
               }
             }
           },
           child: SliceImageView(
             buffer: buffer,
             pixelAspectRatio: _pixelAspectRatio(instance.metadata),
-            zoom: state.zoom,
-            panX: state.panX,
-            panY: state.panY,
+            zoom: transform.zoom,
+            panX: transform.panX,
+            panY: transform.panY,
             invert: invert,
-            fitMode: state.fitMode,
-            onZoomChanged: state.activeTool == ViewerTool.zoom
-                ? onZoomChanged
-                : null,
-            onPanChanged: state.activeTool == ViewerTool.pan
-                ? onPanChanged
-                : null,
+            fitMode: transform.fitMode,
+            tool: selected
+                ? _sliceToolFor(state.activeTool)
+                : SliceImageTool.none,
+            measurementUnitMm: _measurementUnitMm(instance.metadata),
+            onZoomChanged: selected ? onZoomChanged : null,
+            onPanChanged: selected ? onPanChanged : null,
             onInvertToggled: onInvertToggled,
-            onResetRequested: onResetViewport,
-            onFitRequested: onFitViewport,
-            onWindowLevelDrag: state.activeTool == ViewerTool.windowLevel
+            onResetRequested: selected ? onResetViewport : null,
+            onFitRequested: selected ? onFitViewport : null,
+            onWindowLevelDrag:
+                selected && state.activeTool == ViewerTool.windowLevel
                 ? (delta) {
                     final center = effectiveWindowLevel.center + delta.dy * 0.5;
                     final width = (effectiveWindowLevel.width + delta.dx * 0.5)
@@ -363,6 +352,10 @@ class _AxialSliceContent extends StatelessWidget {
     if (extentMm >= 50) return 10;
     return 5;
   }
+
+  double _measurementUnitMm(DicomMetadata metadata) {
+    return metadata.pixelSpacing?.rowMm ?? 1;
+  }
 }
 
 class _ViewportMessage extends StatelessWidget {
@@ -378,11 +371,7 @@ class _ViewportMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.image_search,
-              size: 42,
-              color: Color(0xFF6E858E),
-            ),
+            const Icon(Icons.image_search, size: 42, color: Color(0xFF6E858E)),
             const SizedBox(height: 12),
             Text(
               message,
@@ -428,6 +417,10 @@ class _MprPlaneContent extends StatefulWidget {
     required this.plane,
     required this.normalIndex,
     required this.onSliceIndexChanged,
+    required this.onZoomChanged,
+    required this.onPanChanged,
+    required this.onResetViewport,
+    required this.onFitViewport,
     required this.showWhenMissing,
   });
 
@@ -435,6 +428,10 @@ class _MprPlaneContent extends StatefulWidget {
   final MprPlane plane;
   final int normalIndex;
   final ValueChanged<int> onSliceIndexChanged;
+  final ValueChanged<double> onZoomChanged;
+  final ValueChanged<Offset> onPanChanged;
+  final VoidCallback onResetViewport;
+  final VoidCallback onFitViewport;
   final String showWhenMissing;
 
   @override
@@ -493,6 +490,9 @@ class _MprPlaneContentState extends State<_MprPlaneContent> {
 
   @override
   Widget build(BuildContext context) {
+    final viewport = _viewportForPlane(widget.plane);
+    final selected = widget.state.activeViewport == viewport;
+    final transform = widget.state.transformFor(viewport);
     final series = widget.state.selectedSeries;
     if (series == null) {
       return _ViewportMessage(message: widget.showWhenMissing);
@@ -512,6 +512,36 @@ class _MprPlaneContentState extends State<_MprPlaneContent> {
       windowCenter: widget.state.windowCenter,
       windowWidth: widget.state.windowWidth,
       invert: widget.state.invert,
+      zoom: transform.zoom,
+      panX: transform.panX,
+      panY: transform.panY,
+      fitMode: transform.fitMode,
+      onZoomChanged: selected ? widget.onZoomChanged : null,
+      onPanChanged: selected ? widget.onPanChanged : null,
+      onResetRequested: selected ? widget.onResetViewport : null,
+      onFitRequested: selected ? widget.onFitViewport : null,
+      tool: selected
+          ? _sliceToolFor(widget.state.activeTool)
+          : SliceImageTool.none,
     );
   }
+}
+
+ActiveViewport _viewportForPlane(MprPlane plane) {
+  return switch (plane) {
+    MprPlane.axial => ActiveViewport.axial,
+    MprPlane.sagittal => ActiveViewport.sagittal,
+    MprPlane.coronal => ActiveViewport.coronal,
+  };
+}
+
+SliceImageTool _sliceToolFor(ViewerTool tool) {
+  return switch (tool) {
+    ViewerTool.distance => SliceImageTool.distance,
+    ViewerTool.angle => SliceImageTool.angle,
+    ViewerTool.crosshair => SliceImageTool.crosshair,
+    ViewerTool.pan ||
+    ViewerTool.zoom ||
+    ViewerTool.windowLevel => SliceImageTool.none,
+  };
 }

@@ -63,8 +63,9 @@ class _ViewerScreenState extends State<ViewerScreen> {
     final first = selectedSeries.instances.isEmpty
         ? null
         : selectedSeries.instances.first;
-    final sagittalCenter =
-        first == null ? 0 : (first.metadata.columns - 1) ~/ 2;
+    final sagittalCenter = first == null
+        ? 0
+        : (first.metadata.columns - 1) ~/ 2;
     final coronalCenter = first == null ? 0 : (first.metadata.rows - 1) ~/ 2;
     setState(() {
       final recents = <String>[
@@ -77,9 +78,10 @@ class _ViewerScreenState extends State<ViewerScreen> {
         sliceIndex: 0,
         sagittalIndex: sagittalCenter,
         coronalIndex: coronalCenter,
-        zoom: 1,
-        panX: 0,
-        panY: 0,
+        axialTransform: const ViewportTransformState(),
+        sagittalTransform: const ViewportTransformState(),
+        coronalTransform: const ViewportTransformState(),
+        volumeTransform: const ViewportTransformState(),
         recentSeriesIds: recents.take(10).toList(growable: false),
         importMessage: 'Loaded selected series.',
       );
@@ -100,15 +102,19 @@ class _ViewerScreenState extends State<ViewerScreen> {
 
   void _setZoom(double zoom) {
     setState(() {
-      _state = _state.copyWith(zoom: zoom.clamp(0.1, 8.0).toDouble());
+      _state = _copyWithActiveTransform(
+        _state.activeTransform.copyWith(
+          zoom: zoom.clamp(0.1, 8.0).toDouble(),
+          fitMode: false,
+        ),
+      );
     });
   }
 
-  void _setPan(Offset delta) {
+  void _setPan(Offset pan) {
     setState(() {
-      _state = _state.copyWith(
-        panX: _state.panX + delta.dx,
-        panY: _state.panY + delta.dy,
+      _state = _copyWithActiveTransform(
+        _state.activeTransform.copyWith(panX: pan.dx, panY: pan.dy),
       );
     });
   }
@@ -121,14 +127,23 @@ class _ViewerScreenState extends State<ViewerScreen> {
 
   void _resetViewport() {
     setState(() {
-      _state = _state.copyWith(zoom: 1, panX: 0, panY: 0, fitMode: true);
+      _state = _copyWithActiveTransform(const ViewportTransformState());
     });
   }
 
   void _fitViewport() {
     setState(() {
-      _state = _state.copyWith(fitMode: true, zoom: 1, panX: 0, panY: 0);
+      _state = _copyWithActiveTransform(const ViewportTransformState());
     });
+  }
+
+  ViewerState _copyWithActiveTransform(ViewportTransformState transform) {
+    return switch (_state.activeViewport) {
+      ActiveViewport.axial => _state.copyWith(axialTransform: transform),
+      ActiveViewport.sagittal => _state.copyWith(sagittalTransform: transform),
+      ActiveViewport.coronal => _state.copyWith(coronalTransform: transform),
+      ActiveViewport.volume3d => _state.copyWith(volumeTransform: transform),
+    };
   }
 
   void _setWindowLevel(WindowLevel windowLevel) {
@@ -164,9 +179,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
         case ActiveViewport.axial:
         case ActiveViewport.volume3d:
           final maxIndex = series.instances.length - 1;
-          _state = _state.copyWith(
-            sliceIndex: sliceIndex.clamp(0, maxIndex),
-          );
+          _state = _state.copyWith(sliceIndex: sliceIndex.clamp(0, maxIndex));
         case ActiveViewport.sagittal:
           final maxIndex = first.metadata.columns - 1;
           _state = _state.copyWith(
@@ -174,9 +187,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
           );
         case ActiveViewport.coronal:
           final maxIndex = first.metadata.rows - 1;
-          _state = _state.copyWith(
-            coronalIndex: sliceIndex.clamp(0, maxIndex),
-          );
+          _state = _state.copyWith(coronalIndex: sliceIndex.clamp(0, maxIndex));
       }
     });
   }

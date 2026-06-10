@@ -8,6 +8,34 @@ enum ActiveViewport { axial, sagittal, coronal, volume3d }
 
 enum ImportStatus { idle, selecting, importing, completed, failed }
 
+class ViewportTransformState {
+  const ViewportTransformState({
+    this.zoom = 1,
+    this.panX = 0,
+    this.panY = 0,
+    this.fitMode = true,
+  });
+
+  final double zoom;
+  final double panX;
+  final double panY;
+  final bool fitMode;
+
+  ViewportTransformState copyWith({
+    double? zoom,
+    double? panX,
+    double? panY,
+    bool? fitMode,
+  }) {
+    return ViewportTransformState(
+      zoom: zoom ?? this.zoom,
+      panX: panX ?? this.panX,
+      panY: panY ?? this.panY,
+      fitMode: fitMode ?? this.fitMode,
+    );
+  }
+}
+
 class ViewerState {
   const ViewerState({
     this.selectedStudyId,
@@ -23,11 +51,11 @@ class ViewerState {
     this.sliceIndex = 0,
     this.sagittalIndex = 0,
     this.coronalIndex = 0,
-    this.zoom = 1,
-    this.panX = 0,
-    this.panY = 0,
     this.invert = false,
-    this.fitMode = true,
+    this.axialTransform = const ViewportTransformState(),
+    this.sagittalTransform = const ViewportTransformState(),
+    this.coronalTransform = const ViewportTransformState(),
+    this.volumeTransform = const ViewportTransformState(),
     this.searchQuery = '',
     this.recentSeriesIds = const [],
     this.hidePatientName = false,
@@ -48,11 +76,11 @@ class ViewerState {
   final int sliceIndex;
   final int sagittalIndex;
   final int coronalIndex;
-  final double zoom;
-  final double panX;
-  final double panY;
   final bool invert;
-  final bool fitMode;
+  final ViewportTransformState axialTransform;
+  final ViewportTransformState sagittalTransform;
+  final ViewportTransformState coronalTransform;
+  final ViewportTransformState volumeTransform;
   final String searchQuery;
   final List<String> recentSeriesIds;
   final bool hidePatientName;
@@ -136,6 +164,22 @@ class ViewerState {
     }
   }
 
+  ViewportTransformState transformFor(ActiveViewport viewport) {
+    return switch (viewport) {
+      ActiveViewport.axial => axialTransform,
+      ActiveViewport.sagittal => sagittalTransform,
+      ActiveViewport.coronal => coronalTransform,
+      ActiveViewport.volume3d => volumeTransform,
+    };
+  }
+
+  ViewportTransformState get activeTransform => transformFor(activeViewport);
+
+  double get zoom => activeTransform.zoom;
+  double get panX => activeTransform.panX;
+  double get panY => activeTransform.panY;
+  bool get fitMode => activeTransform.fitMode;
+
   DicomInstance selectedSeriesFirstInstance() {
     final series = selectedSeries;
     if (series == null || series.instances.isEmpty) {
@@ -200,11 +244,11 @@ class ViewerState {
     int? sliceIndex,
     int? sagittalIndex,
     int? coronalIndex,
-    double? zoom,
-    double? panX,
-    double? panY,
     bool? invert,
-    bool? fitMode,
+    ViewportTransformState? axialTransform,
+    ViewportTransformState? sagittalTransform,
+    ViewportTransformState? coronalTransform,
+    ViewportTransformState? volumeTransform,
     String? searchQuery,
     List<String>? recentSeriesIds,
     bool? hidePatientName,
@@ -226,11 +270,11 @@ class ViewerState {
       sliceIndex: sliceIndex ?? this.sliceIndex,
       sagittalIndex: sagittalIndex ?? this.sagittalIndex,
       coronalIndex: coronalIndex ?? this.coronalIndex,
-      zoom: zoom ?? this.zoom,
-      panX: panX ?? this.panX,
-      panY: panY ?? this.panY,
       invert: invert ?? this.invert,
-      fitMode: fitMode ?? this.fitMode,
+      axialTransform: axialTransform ?? this.axialTransform,
+      sagittalTransform: sagittalTransform ?? this.sagittalTransform,
+      coronalTransform: coronalTransform ?? this.coronalTransform,
+      volumeTransform: volumeTransform ?? this.volumeTransform,
       searchQuery: resetSearch ? '' : (searchQuery ?? this.searchQuery),
       recentSeriesIds: recentSeriesIds ?? this.recentSeriesIds,
       hidePatientName: hidePatientName ?? this.hidePatientName,
