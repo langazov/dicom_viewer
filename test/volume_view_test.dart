@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:dicom_viewer/dicom/domain/dicom_models.dart';
 import 'package:dicom_viewer/viewer/widgets/volume_view.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -25,6 +26,37 @@ void main() {
     await tester.pump(const Duration(milliseconds: 60));
 
     expect(find.byType(CustomPaint), findsWidgets);
+  });
+
+  testWidgets('scroll zoom reports external zoom changes', (tester) async {
+    double? zoom;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 320,
+            height: 240,
+            child: VolumeView(
+              series: _series(),
+              onZoomChanged: (value) {
+                zoom = value;
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.sendEventToBinding(
+      const PointerScrollEvent(
+        position: Offset(160, 120),
+        scrollDelta: Offset(0, -20),
+      ),
+    );
+    await tester.pump();
+
+    expect(zoom, closeTo(1.04, 0.01));
   });
 }
 

@@ -1,4 +1,5 @@
 import 'package:dicom_viewer/dicom/domain/dicom_models.dart';
+import 'package:dicom_viewer/viewer/rendering/image_filter_settings.dart';
 
 enum ViewerTool { pan, zoom, windowLevel, distance, angle, crosshair }
 
@@ -45,9 +46,16 @@ class ViewerState {
     this.accessIssues = const [],
     this.layout = ViewportLayout.quad,
     this.activeViewport = ActiveViewport.axial,
-    this.activeTool = ViewerTool.windowLevel,
+    this.activeTool = ViewerTool.pan,
     this.windowCenter = 512,
     this.windowWidth = 1024,
+    this.imageContrast = 1,
+    this.imageBrightness = 0,
+    this.smoothing = false,
+    this.imageFilterMode = ImageFilterMode.none,
+    this.bilateralRadius = 2,
+    this.bilateralSigma = 0.12,
+    this.sharpenAmount = 0.35,
     this.sliceIndex = 0,
     this.sagittalIndex = 0,
     this.coronalIndex = 0,
@@ -73,6 +81,13 @@ class ViewerState {
   final ViewerTool activeTool;
   final double windowCenter;
   final double windowWidth;
+  final double imageContrast;
+  final double imageBrightness;
+  final bool smoothing;
+  final ImageFilterMode imageFilterMode;
+  final int bilateralRadius;
+  final double bilateralSigma;
+  final double sharpenAmount;
   final int sliceIndex;
   final int sagittalIndex;
   final int coronalIndex;
@@ -241,6 +256,13 @@ class ViewerState {
     ViewerTool? activeTool,
     double? windowCenter,
     double? windowWidth,
+    double? imageContrast,
+    double? imageBrightness,
+    bool? smoothing,
+    ImageFilterMode? imageFilterMode,
+    int? bilateralRadius,
+    double? bilateralSigma,
+    double? sharpenAmount,
     int? sliceIndex,
     int? sagittalIndex,
     int? coronalIndex,
@@ -267,6 +289,13 @@ class ViewerState {
       activeTool: activeTool ?? this.activeTool,
       windowCenter: windowCenter ?? this.windowCenter,
       windowWidth: windowWidth ?? this.windowWidth,
+      imageContrast: imageContrast ?? this.imageContrast,
+      imageBrightness: imageBrightness ?? this.imageBrightness,
+      smoothing: smoothing ?? this.smoothing,
+      imageFilterMode: imageFilterMode ?? this.imageFilterMode,
+      bilateralRadius: bilateralRadius ?? this.bilateralRadius,
+      bilateralSigma: bilateralSigma ?? this.bilateralSigma,
+      sharpenAmount: sharpenAmount ?? this.sharpenAmount,
       sliceIndex: sliceIndex ?? this.sliceIndex,
       sagittalIndex: sagittalIndex ?? this.sagittalIndex,
       coronalIndex: coronalIndex ?? this.coronalIndex,

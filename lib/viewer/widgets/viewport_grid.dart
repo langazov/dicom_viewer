@@ -1,5 +1,3 @@
-import 'package:flutter/gestures.dart';
-
 import 'package:dicom_viewer/dicom/domain/dicom_models.dart';
 import 'package:dicom_viewer/dicom/pixel/pixel_decode_service.dart';
 import 'package:dicom_viewer/dicom/pixel/pixel_decode_service_locator.dart';
@@ -105,7 +103,11 @@ class ViewportGrid extends StatelessWidget {
         onFitViewport: onFitViewport,
         showWhenMissing: 'Select a series to view the coronal plane',
       ),
-      ActiveViewport.volume3d => _VolumeContent(state: state),
+      ActiveViewport.volume3d => _VolumeContent(
+        state: state,
+        onZoomChanged: onZoomChanged,
+        onResetViewport: onResetViewport,
+      ),
     };
   }
 
@@ -273,57 +275,48 @@ class _AxialSliceContent extends StatelessWidget {
         slice: decoded,
         windowLevel: effectiveWindowLevel,
         invert: invert,
+        contrast: state.imageContrast,
+        brightness: state.imageBrightness,
+        filterMode: state.imageFilterMode,
+        bilateralRadius: state.bilateralRadius,
+        bilateralSigma: state.bilateralSigma,
+        sharpenAmount: state.sharpenAmount,
       );
 
       return MouseRegion(
-        child: Listener(
-          onPointerSignal: (event) {
-            if (event is PointerScrollEvent) {
-              if (selected && state.activeTool == ViewerTool.windowLevel) {
-                final centerDelta =
-                    effectiveWindowLevel.center + event.scrollDelta.dy * 0.5;
-                final widthDelta =
-                    (effectiveWindowLevel.width + event.scrollDelta.dx * 0.5)
-                        .clamp(1.0, double.infinity);
-                onWindowLevelChanged(
-                  WindowLevel(center: centerDelta, width: widthDelta),
-                );
-              }
-            }
-          },
-          child: SliceImageView(
-            buffer: buffer,
-            pixelAspectRatio: _pixelAspectRatio(instance.metadata),
-            zoom: transform.zoom,
-            panX: transform.panX,
-            panY: transform.panY,
-            invert: invert,
-            fitMode: transform.fitMode,
-            tool: selected
-                ? _sliceToolFor(state.activeTool)
-                : SliceImageTool.none,
-            measurementUnitMm: _measurementUnitMm(instance.metadata),
-            onZoomChanged: selected ? onZoomChanged : null,
-            onPanChanged: selected ? onPanChanged : null,
-            onInvertToggled: onInvertToggled,
-            onResetRequested: selected ? onResetViewport : null,
-            onFitRequested: selected ? onFitViewport : null,
-            onWindowLevelDrag:
-                selected && state.activeTool == ViewerTool.windowLevel
-                ? (delta) {
-                    final center = effectiveWindowLevel.center + delta.dy * 0.5;
-                    final width = (effectiveWindowLevel.width + delta.dx * 0.5)
-                        .clamp(1.0, double.infinity);
-                    onWindowLevelChanged(
-                      WindowLevel(center: center, width: width),
-                    );
-                  }
-                : null,
-            scaleBarMm: _scaleBarMm(instance.metadata),
-            sliceLabel: state.selectedSeriesInstanceCount == 0
-                ? null
-                : 'Slice ${state.sliceIndex + 1}/${state.selectedSeriesInstanceCount}',
-          ),
+        child: SliceImageView(
+          buffer: buffer,
+          pixelAspectRatio: _pixelAspectRatio(instance.metadata),
+          zoom: transform.zoom,
+          panX: transform.panX,
+          panY: transform.panY,
+          invert: invert,
+          smoothing: state.smoothing,
+          fitMode: transform.fitMode,
+          tool: selected
+              ? _sliceToolFor(state.activeTool)
+              : SliceImageTool.none,
+          measurementUnitMm: _measurementUnitMm(instance.metadata),
+          onZoomChanged: selected ? onZoomChanged : null,
+          onPanChanged: selected ? onPanChanged : null,
+          onInvertToggled: onInvertToggled,
+          onResetRequested: selected ? onResetViewport : null,
+          onFitRequested: selected ? onFitViewport : null,
+          onWindowLevelDrag:
+              selected && state.activeTool == ViewerTool.windowLevel
+              ? (delta) {
+                  final center = effectiveWindowLevel.center + delta.dy * 0.5;
+                  final width = (effectiveWindowLevel.width + delta.dx * 0.5)
+                      .clamp(1.0, double.infinity);
+                  onWindowLevelChanged(
+                    WindowLevel(center: center, width: width),
+                  );
+                }
+              : null,
+          scaleBarMm: _scaleBarMm(instance.metadata),
+          sliceLabel: state.selectedSeriesInstanceCount == 0
+              ? null
+              : 'Slice ${state.sliceIndex + 1}/${state.selectedSeriesInstanceCount}',
         ),
       );
     } on Object catch (error) {
@@ -386,9 +379,15 @@ class _ViewportMessage extends StatelessWidget {
 }
 
 class _VolumeContent extends StatelessWidget {
-  const _VolumeContent({required this.state});
+  const _VolumeContent({
+    required this.state,
+    required this.onZoomChanged,
+    required this.onResetViewport,
+  });
 
   final ViewerState state;
+  final ValueChanged<double> onZoomChanged;
+  final VoidCallback onResetViewport;
 
   @override
   Widget build(BuildContext context) {
@@ -404,7 +403,15 @@ class _VolumeContent extends StatelessWidget {
     }
 
     try {
-      return VolumeView(series: series);
+      final selected = state.activeViewport == ActiveViewport.volume3d;
+      final transform = state.transformFor(ActiveViewport.volume3d);
+      return VolumeView(
+        series: series,
+        zoom: transform.zoom,
+        fitMode: transform.fitMode,
+        onZoomChanged: selected ? onZoomChanged : null,
+        onResetRequested: selected ? onResetViewport : null,
+      );
     } on Object catch (error) {
       return _ViewportMessage(message: 'Cannot build 3D view: $error');
     }
@@ -512,6 +519,13 @@ class _MprPlaneContentState extends State<_MprPlaneContent> {
       windowCenter: widget.state.windowCenter,
       windowWidth: widget.state.windowWidth,
       invert: widget.state.invert,
+      contrast: widget.state.imageContrast,
+      brightness: widget.state.imageBrightness,
+      smoothing: widget.state.smoothing,
+      filterMode: widget.state.imageFilterMode,
+      bilateralRadius: widget.state.bilateralRadius,
+      bilateralSigma: widget.state.bilateralSigma,
+      sharpenAmount: widget.state.sharpenAmount,
       zoom: transform.zoom,
       panX: transform.panX,
       panY: transform.panY,

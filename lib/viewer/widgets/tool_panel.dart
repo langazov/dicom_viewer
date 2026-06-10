@@ -1,4 +1,5 @@
 import 'package:dicom_viewer/viewer/state/viewer_state.dart';
+import 'package:dicom_viewer/viewer/rendering/image_filter_settings.dart';
 import 'package:flutter/material.dart';
 
 class ToolPanel extends StatelessWidget {
@@ -6,16 +7,32 @@ class ToolPanel extends StatelessWidget {
     super.key,
     required this.state,
     required this.onToolChanged,
+    required this.onContrastChanged,
+    required this.onBrightnessChanged,
+    required this.onSmoothingChanged,
+    required this.onFilterModeChanged,
+    required this.onBilateralRadiusChanged,
+    required this.onBilateralSigmaChanged,
+    required this.onSharpenAmountChanged,
+    required this.onResetImageFilters,
   });
 
   final ViewerState state;
   final ValueChanged<ViewerTool> onToolChanged;
+  final ValueChanged<double> onContrastChanged;
+  final ValueChanged<double> onBrightnessChanged;
+  final ValueChanged<bool> onSmoothingChanged;
+  final ValueChanged<ImageFilterMode> onFilterModeChanged;
+  final ValueChanged<int> onBilateralRadiusChanged;
+  final ValueChanged<double> onBilateralSigmaChanged;
+  final ValueChanged<double> onSharpenAmountChanged;
+  final VoidCallback onResetImageFilters;
 
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
       color: const Color(0xFF20272C),
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,9 +81,143 @@ class ToolPanel extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Text('Image', style: Theme.of(context).textTheme.titleMedium),
+                const Spacer(),
+                TextButton(
+                  onPressed: onResetImageFilters,
+                  child: const Text('Reset'),
+                ),
+              ],
+            ),
+            _FilterSlider(
+              label: 'Contrast',
+              value: state.imageContrast,
+              min: 0.5,
+              max: 2.5,
+              displayValue: '${state.imageContrast.toStringAsFixed(2)}x',
+              onChanged: onContrastChanged,
+            ),
+            _FilterSlider(
+              label: 'Lightness',
+              value: state.imageBrightness,
+              min: -0.5,
+              max: 0.5,
+              displayValue: state.imageBrightness.toStringAsFixed(2),
+              onChanged: onBrightnessChanged,
+            ),
+            SwitchListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Smoothing'),
+              subtitle: const Text('Reduce pixel edges while zoomed'),
+              value: state.smoothing,
+              onChanged: onSmoothingChanged,
+            ),
+            const SizedBox(height: 8),
+            Text('Filter', style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<ImageFilterMode>(
+              initialValue: state.imageFilterMode,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final mode in ImageFilterMode.values)
+                  DropdownMenuItem(
+                    value: mode,
+                    child: Text(mode.label, overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: (mode) {
+                if (mode != null) {
+                  onFilterModeChanged(mode);
+                }
+              },
+            ),
+            if (state.imageFilterMode == ImageFilterMode.bilateral ||
+                state.imageFilterMode == ImageFilterMode.bilateralSharpen) ...[
+              const SizedBox(height: 12),
+              _FilterSlider(
+                label: 'Bilateral radius',
+                value: state.bilateralRadius.toDouble(),
+                min: 1,
+                max: 4,
+                divisions: 3,
+                displayValue: state.bilateralRadius.toString(),
+                onChanged: (value) => onBilateralRadiusChanged(value.round()),
+              ),
+              _FilterSlider(
+                label: 'Edge sensitivity',
+                value: state.bilateralSigma,
+                min: 0.02,
+                max: 0.35,
+                displayValue: state.bilateralSigma.toStringAsFixed(2),
+                onChanged: onBilateralSigmaChanged,
+              ),
+            ],
+            if (state.imageFilterMode == ImageFilterMode.sharpen ||
+                state.imageFilterMode == ImageFilterMode.bilateralSharpen) ...[
+              const SizedBox(height: 12),
+              _FilterSlider(
+                label: 'Sharpness',
+                value: state.sharpenAmount,
+                min: 0,
+                max: 1.5,
+                displayValue: state.sharpenAmount.toStringAsFixed(2),
+                onChanged: onSharpenAmountChanged,
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _FilterSlider extends StatelessWidget {
+  const _FilterSlider({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.displayValue,
+    required this.onChanged,
+    this.divisions,
+  });
+
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final String displayValue;
+  final ValueChanged<double> onChanged;
+  final int? divisions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(label, style: Theme.of(context).textTheme.bodyMedium),
+            const Spacer(),
+            Text(displayValue, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+        Slider(
+          min: min,
+          max: max,
+          divisions: divisions,
+          value: value.clamp(min, max).toDouble(),
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 }

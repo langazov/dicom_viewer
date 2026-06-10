@@ -109,8 +109,9 @@ class _FakeImportRunner extends DicomImportRunner {
 }
 
 void main() {
-  testWidgets('bottom slider changes coronal index when coronal is active',
-      (tester) async {
+  testWidgets('bottom slider changes coronal index when coronal is active', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 900));
     await tester.pumpWidget(
       MaterialApp(
@@ -144,7 +145,7 @@ void main() {
     expect(statusBefore, findsWidgets);
 
     // Move the bottom slider.
-    final slider = find.byType(Slider);
+    final slider = find.byKey(const ValueKey('slice-slider'));
     expect(slider, findsOneWidget);
     await tester.drag(slider, const Offset(120, 0));
     await tester.pumpAndSettle();

@@ -90,12 +90,11 @@ class StatusBar extends StatelessWidget {
                       ),
                     ),
                     child: Slider(
+                      key: const ValueKey('slice-slider'),
                       min: 0,
                       max: (maxIndex - 1).toDouble(),
                       divisions: maxIndex > 1 ? maxIndex - 1 : null,
-                      value: currentIndex
-                          .clamp(0, maxIndex - 1)
-                          .toDouble(),
+                      value: currentIndex.clamp(0, maxIndex - 1).toDouble(),
                       onChanged: maxIndex > 1
                           ? (value) => onSliceChanged(value.round())
                           : null,

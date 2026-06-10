@@ -331,4 +331,78 @@ void main() {
 
     expect(zoom, closeTo(1.04, 0.01));
   });
+
+  testWidgets('scroll zooms even when window level drag is enabled', (
+    tester,
+  ) async {
+    final buffer = SliceDisplayBuffer(
+      width: 100,
+      height: 100,
+      rgba: Uint8List.fromList(List<int>.filled(100 * 100 * 4, 255)),
+    );
+    double? zoom;
+    WindowLevelDragDelta? windowLevelDelta;
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: SizedBox(
+          width: 200,
+          height: 200,
+          child: SliceImageView(
+            buffer: buffer,
+            pixelAspectRatio: 1,
+            fitMode: true,
+            onZoomChanged: (value) {
+              zoom = value;
+            },
+            onWindowLevelDrag: (delta) {
+              windowLevelDelta = delta;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pump();
+
+    await tester.sendEventToBinding(
+      const PointerScrollEvent(
+        position: Offset(100, 100),
+        scrollDelta: Offset(0, -20),
+      ),
+    );
+    await tester.pump();
+
+    expect(zoom, closeTo(1.04, 0.01));
+    expect(windowLevelDelta, isNull);
+  });
+
+  testWidgets('smoothing changes RawImage filter quality', (tester) async {
+    final buffer = SliceDisplayBuffer(
+      width: 2,
+      height: 2,
+      rgba: Uint8List.fromList(List<int>.filled(2 * 2 * 4, 255)),
+    );
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: SliceImageView(
+          buffer: buffer,
+          pixelAspectRatio: 1,
+          smoothing: true,
+        ),
+      ),
+    );
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pump();
+
+    final rawImage = tester.widget<RawImage>(find.byType(RawImage));
+    expect(rawImage.filterQuality, FilterQuality.medium);
+  });
 }

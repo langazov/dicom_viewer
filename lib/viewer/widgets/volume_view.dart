@@ -6,9 +6,20 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 class VolumeView extends StatefulWidget {
-  const VolumeView({super.key, required this.series});
+  const VolumeView({
+    super.key,
+    required this.series,
+    this.zoom = 1,
+    this.fitMode = true,
+    this.onZoomChanged,
+    this.onResetRequested,
+  });
 
   final DicomSeries series;
+  final double zoom;
+  final bool fitMode;
+  final ValueChanged<double>? onZoomChanged;
+  final VoidCallback? onResetRequested;
 
   @override
   State<VolumeView> createState() => _VolumeViewState();
@@ -21,6 +32,7 @@ class _VolumeViewState extends State<VolumeView> {
   double _rotationX = -0.45;
   double _rotationY = 0.65;
   double _zoom = 1.0;
+  double _scaleStartZoom = 1.0;
   double _opacityThreshold = 0.05;
   String? _error;
 
@@ -86,28 +98,49 @@ class _VolumeViewState extends State<VolumeView> {
       return const Center(child: Text('3D volume has no renderable voxels'));
     }
 
+    final effectiveZoom = widget.onZoomChanged == null
+        ? _zoom
+        : (widget.fitMode ? 1.0 : widget.zoom);
+
     return Stack(
       children: [
         Positioned.fill(
           child: Listener(
             onPointerSignal: (event) {
               if (event is PointerScrollEvent) {
-                setState(() {
-                  _zoom = (_zoom * (event.scrollDelta.dy > 0 ? 0.92 : 1.08))
-                      .clamp(0.45, 3.0);
-                });
+                final nextZoom = _clampZoom(
+                  effectiveZoom * _scrollZoomFactor(event.scrollDelta.dy),
+                );
+                if (widget.onZoomChanged != null) {
+                  widget.onZoomChanged!(nextZoom);
+                } else {
+                  setState(() {
+                    _zoom = nextZoom;
+                  });
+                }
               }
             },
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onPanUpdate: (details) {
+              onScaleStart: (details) {
+                _scaleStartZoom = effectiveZoom;
+              },
+              onScaleUpdate: (details) {
                 setState(() {
-                  _rotationY += details.delta.dx * 0.01;
-                  _rotationX = (_rotationX + details.delta.dy * 0.01).clamp(
-                    -pi / 2,
-                    pi / 2,
-                  );
+                  _rotationY += details.focalPointDelta.dx * 0.01;
+                  _rotationX = (_rotationX + details.focalPointDelta.dy * 0.01)
+                      .clamp(-pi / 2, pi / 2);
                 });
+                if (details.pointerCount >= 2) {
+                  final nextZoom = _clampZoom(_scaleStartZoom * details.scale);
+                  if (widget.onZoomChanged != null) {
+                    widget.onZoomChanged!(nextZoom);
+                  } else {
+                    setState(() {
+                      _zoom = nextZoom;
+                    });
+                  }
+                }
               },
               onDoubleTap: () {
                 setState(() {
@@ -115,13 +148,14 @@ class _VolumeViewState extends State<VolumeView> {
                   _rotationY = 0.65;
                   _zoom = 1.0;
                 });
+                widget.onResetRequested?.call();
               },
               child: CustomPaint(
                 painter: _VolumePainter(
                   volume: _volume,
                   rotationX: _rotationX,
                   rotationY: _rotationY,
-                  zoom: _zoom,
+                  zoom: effectiveZoom,
                   opacityThreshold: _opacityThreshold,
                   color: Theme.of(context).colorScheme.primary,
                 ),
@@ -190,6 +224,12 @@ class _VolumeViewState extends State<VolumeView> {
       ],
     );
   }
+
+  double _scrollZoomFactor(double scrollDy) {
+    return exp(-scrollDy * 0.002).clamp(0.85, 1.18).toDouble();
+  }
+
+  double _clampZoom(double zoom) => zoom.clamp(0.45, 6.0).toDouble();
 }
 
 class _VolumePainter extends CustomPainter {

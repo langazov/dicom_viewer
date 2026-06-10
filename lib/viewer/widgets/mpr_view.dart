@@ -1,5 +1,6 @@
 import 'package:dicom_viewer/dicom/pixel/decoded_slice.dart';
 import 'package:dicom_viewer/viewer/rendering/mpr_sampler.dart';
+import 'package:dicom_viewer/viewer/rendering/image_filter_settings.dart';
 import 'package:dicom_viewer/viewer/rendering/slice_display_mapper.dart';
 import 'package:dicom_viewer/viewer/rendering/voxel_volume.dart';
 import 'package:dicom_viewer/viewer/rendering/window_level.dart';
@@ -15,6 +16,13 @@ class MprView extends StatefulWidget {
     this.windowCenter = 0,
     this.windowWidth = 1,
     this.invert = false,
+    this.contrast = 1,
+    this.brightness = 0,
+    this.smoothing = false,
+    this.filterMode = ImageFilterMode.none,
+    this.bilateralRadius = 2,
+    this.bilateralSigma = 0.12,
+    this.sharpenAmount = 0.35,
     this.zoom = 1,
     this.panX = 0,
     this.panY = 0,
@@ -33,6 +41,13 @@ class MprView extends StatefulWidget {
   final double windowCenter;
   final double windowWidth;
   final bool invert;
+  final double contrast;
+  final double brightness;
+  final bool smoothing;
+  final ImageFilterMode filterMode;
+  final int bilateralRadius;
+  final double bilateralSigma;
+  final double sharpenAmount;
   final double zoom;
   final double panX;
   final double panY;
@@ -94,6 +109,12 @@ class _MprViewState extends State<MprView> {
       slice: _toDecodedSlice(slice),
       windowLevel: _windowLevel,
       invert: widget.invert,
+      contrast: widget.contrast,
+      brightness: widget.brightness,
+      filterMode: widget.filterMode,
+      bilateralRadius: widget.bilateralRadius,
+      bilateralSigma: widget.bilateralSigma,
+      sharpenAmount: widget.sharpenAmount,
     );
     return SliceImageView(
       buffer: buffer,
@@ -103,6 +124,7 @@ class _MprViewState extends State<MprView> {
       zoom: widget.zoom,
       panX: widget.panX,
       panY: widget.panY,
+      smoothing: widget.smoothing,
       fitMode: widget.fitMode,
       tool: widget.tool,
       measurementUnitMm: slice.spacingY,

@@ -2,6 +2,7 @@ import 'package:dicom_viewer/dicom/domain/dicom_models.dart';
 import 'package:dicom_viewer/dicom/import/dicom_import_adapter.dart';
 import 'package:dicom_viewer/dicom/import/dicom_import_runner.dart';
 import 'package:dicom_viewer/dicom/import/file_picker_dicom_import_adapter.dart';
+import 'package:dicom_viewer/viewer/rendering/image_filter_settings.dart';
 import 'package:dicom_viewer/viewer/rendering/window_level.dart';
 import 'package:dicom_viewer/viewer/state/viewer_state.dart';
 import 'package:dicom_viewer/viewer/widgets/metadata_panel.dart';
@@ -151,6 +152,68 @@ class _ViewerScreenState extends State<ViewerScreen> {
       _state = _state.copyWith(
         windowCenter: windowLevel.center,
         windowWidth: windowLevel.width,
+      );
+    });
+  }
+
+  void _setImageContrast(double contrast) {
+    setState(() {
+      _state = _state.copyWith(
+        imageContrast: contrast.clamp(0.5, 2.5).toDouble(),
+      );
+    });
+  }
+
+  void _setImageBrightness(double brightness) {
+    setState(() {
+      _state = _state.copyWith(
+        imageBrightness: brightness.clamp(-0.5, 0.5).toDouble(),
+      );
+    });
+  }
+
+  void _setSmoothing(bool smoothing) {
+    setState(() {
+      _state = _state.copyWith(smoothing: smoothing);
+    });
+  }
+
+  void _setImageFilterMode(ImageFilterMode mode) {
+    setState(() {
+      _state = _state.copyWith(imageFilterMode: mode);
+    });
+  }
+
+  void _setBilateralRadius(int radius) {
+    setState(() {
+      _state = _state.copyWith(bilateralRadius: radius.clamp(1, 4));
+    });
+  }
+
+  void _setBilateralSigma(double sigma) {
+    setState(() {
+      _state = _state.copyWith(
+        bilateralSigma: sigma.clamp(0.02, 0.35).toDouble(),
+      );
+    });
+  }
+
+  void _setSharpenAmount(double amount) {
+    setState(() {
+      _state = _state.copyWith(sharpenAmount: amount.clamp(0, 1.5).toDouble());
+    });
+  }
+
+  void _resetImageFilters() {
+    setState(() {
+      _state = _state.copyWith(
+        imageContrast: 1,
+        imageBrightness: 0,
+        smoothing: false,
+        imageFilterMode: ImageFilterMode.none,
+        bilateralRadius: 2,
+        bilateralSigma: 0.12,
+        sharpenAmount: 0.35,
       );
     });
   }
@@ -308,6 +371,14 @@ class _ViewerScreenState extends State<ViewerScreen> {
               onResetViewport: _resetViewport,
               onFitViewport: _fitViewport,
               onWindowLevelChanged: _setWindowLevel,
+              onContrastChanged: _setImageContrast,
+              onBrightnessChanged: _setImageBrightness,
+              onSmoothingChanged: _setSmoothing,
+              onFilterModeChanged: _setImageFilterMode,
+              onBilateralRadiusChanged: _setBilateralRadius,
+              onBilateralSigmaChanged: _setBilateralSigma,
+              onSharpenAmountChanged: _setSharpenAmount,
+              onResetImageFilters: _resetImageFilters,
             );
           }
 
@@ -326,6 +397,14 @@ class _ViewerScreenState extends State<ViewerScreen> {
               onResetViewport: _resetViewport,
               onFitViewport: _fitViewport,
               onWindowLevelChanged: _setWindowLevel,
+              onContrastChanged: _setImageContrast,
+              onBrightnessChanged: _setImageBrightness,
+              onSmoothingChanged: _setSmoothing,
+              onFilterModeChanged: _setImageFilterMode,
+              onBilateralRadiusChanged: _setBilateralRadius,
+              onBilateralSigmaChanged: _setBilateralSigma,
+              onSharpenAmountChanged: _setSharpenAmount,
+              onResetImageFilters: _resetImageFilters,
             );
           }
 
@@ -343,6 +422,14 @@ class _ViewerScreenState extends State<ViewerScreen> {
             onResetViewport: _resetViewport,
             onFitViewport: _fitViewport,
             onWindowLevelChanged: _setWindowLevel,
+            onContrastChanged: _setImageContrast,
+            onBrightnessChanged: _setImageBrightness,
+            onSmoothingChanged: _setSmoothing,
+            onFilterModeChanged: _setImageFilterMode,
+            onBilateralRadiusChanged: _setBilateralRadius,
+            onBilateralSigmaChanged: _setBilateralSigma,
+            onSharpenAmountChanged: _setSharpenAmount,
+            onResetImageFilters: _resetImageFilters,
           );
         },
       ),
@@ -365,6 +452,14 @@ class _DesktopWorkspace extends StatelessWidget {
     required this.onResetViewport,
     required this.onFitViewport,
     required this.onWindowLevelChanged,
+    required this.onContrastChanged,
+    required this.onBrightnessChanged,
+    required this.onSmoothingChanged,
+    required this.onFilterModeChanged,
+    required this.onBilateralRadiusChanged,
+    required this.onBilateralSigmaChanged,
+    required this.onSharpenAmountChanged,
+    required this.onResetImageFilters,
   });
 
   final ViewerState state;
@@ -380,6 +475,14 @@ class _DesktopWorkspace extends StatelessWidget {
   final VoidCallback onResetViewport;
   final VoidCallback onFitViewport;
   final ValueChanged<WindowLevel> onWindowLevelChanged;
+  final ValueChanged<double> onContrastChanged;
+  final ValueChanged<double> onBrightnessChanged;
+  final ValueChanged<bool> onSmoothingChanged;
+  final ValueChanged<ImageFilterMode> onFilterModeChanged;
+  final ValueChanged<int> onBilateralRadiusChanged;
+  final ValueChanged<double> onBilateralSigmaChanged;
+  final ValueChanged<double> onSharpenAmountChanged;
+  final VoidCallback onResetImageFilters;
 
   @override
   Widget build(BuildContext context) {
@@ -416,7 +519,21 @@ class _DesktopWorkspace extends StatelessWidget {
                 width: 320,
                 child: Column(
                   children: [
-                    ToolPanel(state: state, onToolChanged: onToolChanged),
+                    SizedBox(
+                      height: 300,
+                      child: ToolPanel(
+                        state: state,
+                        onToolChanged: onToolChanged,
+                        onContrastChanged: onContrastChanged,
+                        onBrightnessChanged: onBrightnessChanged,
+                        onSmoothingChanged: onSmoothingChanged,
+                        onFilterModeChanged: onFilterModeChanged,
+                        onBilateralRadiusChanged: onBilateralRadiusChanged,
+                        onBilateralSigmaChanged: onBilateralSigmaChanged,
+                        onSharpenAmountChanged: onSharpenAmountChanged,
+                        onResetImageFilters: onResetImageFilters,
+                      ),
+                    ),
                     const Divider(height: 1),
                     Expanded(child: MetadataPanel(state: state)),
                   ],
@@ -450,6 +567,14 @@ class _TabletWorkspace extends StatelessWidget {
     required this.onResetViewport,
     required this.onFitViewport,
     required this.onWindowLevelChanged,
+    required this.onContrastChanged,
+    required this.onBrightnessChanged,
+    required this.onSmoothingChanged,
+    required this.onFilterModeChanged,
+    required this.onBilateralRadiusChanged,
+    required this.onBilateralSigmaChanged,
+    required this.onSharpenAmountChanged,
+    required this.onResetImageFilters,
   });
 
   final ViewerState state;
@@ -465,6 +590,14 @@ class _TabletWorkspace extends StatelessWidget {
   final VoidCallback onResetViewport;
   final VoidCallback onFitViewport;
   final ValueChanged<WindowLevel> onWindowLevelChanged;
+  final ValueChanged<double> onContrastChanged;
+  final ValueChanged<double> onBrightnessChanged;
+  final ValueChanged<bool> onSmoothingChanged;
+  final ValueChanged<ImageFilterMode> onFilterModeChanged;
+  final ValueChanged<int> onBilateralRadiusChanged;
+  final ValueChanged<double> onBilateralSigmaChanged;
+  final ValueChanged<double> onSharpenAmountChanged;
+  final VoidCallback onResetImageFilters;
 
   @override
   Widget build(BuildContext context) {
@@ -491,7 +624,21 @@ class _TabletWorkspace extends StatelessWidget {
                 width: 280,
                 child: Column(
                   children: [
-                    ToolPanel(state: state, onToolChanged: onToolChanged),
+                    SizedBox(
+                      height: 200,
+                      child: ToolPanel(
+                        state: state,
+                        onToolChanged: onToolChanged,
+                        onContrastChanged: onContrastChanged,
+                        onBrightnessChanged: onBrightnessChanged,
+                        onSmoothingChanged: onSmoothingChanged,
+                        onFilterModeChanged: onFilterModeChanged,
+                        onBilateralRadiusChanged: onBilateralRadiusChanged,
+                        onBilateralSigmaChanged: onBilateralSigmaChanged,
+                        onSharpenAmountChanged: onSharpenAmountChanged,
+                        onResetImageFilters: onResetImageFilters,
+                      ),
+                    ),
                     const Divider(height: 1),
                     Expanded(
                       child: SeriesBrowser(
@@ -529,6 +676,14 @@ class _PhoneWorkspace extends StatelessWidget {
     required this.onResetViewport,
     required this.onFitViewport,
     required this.onWindowLevelChanged,
+    required this.onContrastChanged,
+    required this.onBrightnessChanged,
+    required this.onSmoothingChanged,
+    required this.onFilterModeChanged,
+    required this.onBilateralRadiusChanged,
+    required this.onBilateralSigmaChanged,
+    required this.onSharpenAmountChanged,
+    required this.onResetImageFilters,
   });
 
   final ViewerState state;
@@ -541,6 +696,14 @@ class _PhoneWorkspace extends StatelessWidget {
   final VoidCallback onResetViewport;
   final VoidCallback onFitViewport;
   final ValueChanged<WindowLevel> onWindowLevelChanged;
+  final ValueChanged<double> onContrastChanged;
+  final ValueChanged<double> onBrightnessChanged;
+  final ValueChanged<bool> onSmoothingChanged;
+  final ValueChanged<ImageFilterMode> onFilterModeChanged;
+  final ValueChanged<int> onBilateralRadiusChanged;
+  final ValueChanged<double> onBilateralSigmaChanged;
+  final ValueChanged<double> onSharpenAmountChanged;
+  final VoidCallback onResetImageFilters;
 
   @override
   Widget build(BuildContext context) {
@@ -562,7 +725,18 @@ class _PhoneWorkspace extends StatelessWidget {
         const Divider(height: 1),
         SizedBox(
           height: 132,
-          child: ToolPanel(state: state, onToolChanged: onToolChanged),
+          child: ToolPanel(
+            state: state,
+            onToolChanged: onToolChanged,
+            onContrastChanged: onContrastChanged,
+            onBrightnessChanged: onBrightnessChanged,
+            onSmoothingChanged: onSmoothingChanged,
+            onFilterModeChanged: onFilterModeChanged,
+            onBilateralRadiusChanged: onBilateralRadiusChanged,
+            onBilateralSigmaChanged: onBilateralSigmaChanged,
+            onSharpenAmountChanged: onSharpenAmountChanged,
+            onResetImageFilters: onResetImageFilters,
+          ),
         ),
         StatusBar(
           state: state,

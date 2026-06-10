@@ -16,6 +16,7 @@ class SliceImageView extends StatefulWidget {
     this.panY = 0,
     this.invert = false,
     this.fitMode = true,
+    this.smoothing = false,
     this.onZoomChanged,
     this.onPanChanged,
     this.onInvertToggled,
@@ -36,6 +37,7 @@ class SliceImageView extends StatefulWidget {
   final double panY;
   final bool invert;
   final bool fitMode;
+  final bool smoothing;
   final ValueChanged<double>? onZoomChanged;
   final ValueChanged<Offset>? onPanChanged;
   final VoidCallback? onInvertToggled;
@@ -150,21 +152,10 @@ class _SliceImageViewState extends State<SliceImageView> {
             Listener(
               onPointerSignal: (event) {
                 if (event is PointerScrollEvent) {
-                  if (widget.onWindowLevelDrag != null) {
-                    widget.onWindowLevelDrag!(
-                      WindowLevelDragDelta(
-                        event.scrollDelta.dx,
-                        event.scrollDelta.dy,
-                      ),
-                    );
-                  } else {
-                    final factor = _scrollZoomFactor(event.scrollDelta.dy);
-                    widget.onZoomChanged?.call(
-                      _clampZoom(
-                        widget.fitMode ? factor : widget.zoom * factor,
-                      ),
-                    );
-                  }
+                  final factor = _scrollZoomFactor(event.scrollDelta.dy);
+                  widget.onZoomChanged?.call(
+                    _clampZoom(widget.fitMode ? factor : widget.zoom * factor),
+                  );
                 }
               },
               child: GestureDetector(
@@ -193,6 +184,17 @@ class _SliceImageViewState extends State<SliceImageView> {
                           widget.onZoomChanged?.call(
                             _clampZoom(_scaleStartZoom * details.scale),
                           );
+                          return;
+                        }
+                        final windowLevelDrag = widget.onWindowLevelDrag;
+                        if (windowLevelDrag != null) {
+                          windowLevelDrag(
+                            WindowLevelDragDelta(
+                              details.focalPointDelta.dx,
+                              details.focalPointDelta.dy,
+                            ),
+                          );
+                          return;
                         }
                         final panDelta =
                             details.focalPointDelta / fitScale.clamp(0.01, 100);
@@ -236,7 +238,9 @@ class _SliceImageViewState extends State<SliceImageView> {
                         child: RawImage(
                           image: image,
                           fit: BoxFit.fill,
-                          filterQuality: FilterQuality.none,
+                          filterQuality: widget.smoothing
+                              ? FilterQuality.medium
+                              : FilterQuality.none,
                         ),
                       ),
                     ),
