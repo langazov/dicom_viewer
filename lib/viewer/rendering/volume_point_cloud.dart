@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:dicom_viewer/dicom/domain/dicom_models.dart';
 import 'package:dicom_viewer/dicom/pixel/decoded_slice.dart';
 import 'package:dicom_viewer/dicom/pixel/pixel_decoder.dart';
+import 'package:dicom_viewer/viewer/rendering/volume_instance_ordering.dart';
 import 'package:dicom_viewer/viewer/rendering/window_level.dart';
 
 class VolumePointCloud {
@@ -59,16 +60,9 @@ class VolumePointCloudBuilder {
       );
     }
 
-    final instances = [...series.instances]
-      ..sort((left, right) {
-        final leftNumber = left.instanceNumber;
-        final rightNumber = right.instanceNumber;
-        if (leftNumber != null && rightNumber != null) {
-          return leftNumber.compareTo(rightNumber);
-        }
-
-        return left.filePath.compareTo(right.filePath);
-      });
+    final instances = VolumeInstanceOrdering.sortAndCollapseByPosition(
+      series.instances,
+    );
 
     final firstMetadata = instances.first.metadata;
     final rowSpacing = firstMetadata.pixelSpacing?.rowMm ?? 1;
@@ -76,7 +70,8 @@ class VolumePointCloudBuilder {
     final sliceSpacing = _sliceSpacing(instances);
     final widthMm = firstMetadata.columns * columnSpacing;
     final heightMm = firstMetadata.rows * rowSpacing;
-    final depthMm = max(1, instances.length - 1) * sliceSpacing;    final points = <VolumePoint>[];
+    final depthMm = max(1, instances.length - 1) * sliceSpacing;
+    final points = <VolumePoint>[];
     final decoder = const PixelDecoder();
 
     for (var sliceIndex = 0; sliceIndex < instances.length; sliceIndex += 1) {
@@ -124,8 +119,8 @@ class VolumePointCloudBuilder {
           if (channels >= 3) {
             value =
                 0.299 * decoded.values[i * 3] +
-                    0.587 * decoded.values[i * 3 + 1] +
-                    0.114 * decoded.values[i * 3 + 2];
+                0.587 * decoded.values[i * 3 + 1] +
+                0.114 * decoded.values[i * 3 + 2];
           } else {
             value = decoded.values[i];
           }

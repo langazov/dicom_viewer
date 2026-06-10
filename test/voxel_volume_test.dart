@@ -9,6 +9,7 @@ DicomInstance _buildInstance({
   required int number,
   required List<int> pixels,
   double z = 0,
+  ImageOrientation? orientation,
 }) {
   final bytes = Uint8List(pixels.length * 2);
   final data = ByteData.sublistView(bytes);
@@ -25,14 +26,16 @@ DicomInstance _buildInstance({
       columns: 2,
       pixelSpacing: const VoxelSpacing(rowMm: 1, columnMm: 1),
       imagePosition: ImagePosition(0, 0, z),
-      imageOrientation: const ImageOrientation(
-        rowX: 1,
-        rowY: 0,
-        rowZ: 0,
-        columnX: 0,
-        columnY: 1,
-        columnZ: 0,
-      ),
+      imageOrientation:
+          orientation ??
+          const ImageOrientation(
+            rowX: 1,
+            rowY: 0,
+            rowZ: 0,
+            columnX: 0,
+            columnY: 1,
+            columnZ: 0,
+          ),
       pixelData: const PixelDataDescriptor(
         samplesPerPixel: 1,
         bitsAllocated: 16,
@@ -77,6 +80,72 @@ void main() {
 
     final hist = const VoxelVolumeBuilder().computeHistogram(volume, bins: 4);
     expect(hist.bins, isNotEmpty);
+  });
+
+  test('VoxelVolumeBuilder collapses repeated slice positions', () {
+    final series = DicomSeries(
+      instanceUid: 'S1',
+      description: '',
+      modality: 'MR',
+      instances: [
+        _buildInstance(sop: 'a', number: 1, pixels: [10, 10, 10, 10], z: 0),
+        _buildInstance(sop: 'b', number: 2, pixels: [30, 30, 30, 30], z: 2),
+        _buildInstance(sop: 'c', number: 3, pixels: [20, 20, 20, 20], z: 0),
+        _buildInstance(sop: 'd', number: 4, pixels: [40, 40, 40, 40], z: 2),
+      ],
+    );
+
+    final volume = const VoxelVolumeBuilder().build(series);
+
+    expect(volume.depth, 2);
+    expect(volume.spacingZ, 2);
+    expect(volume.values[0], 10);
+    expect(volume.values[4], 30);
+    expect(volume.seriesInstanceUid, 'S1');
+  });
+
+  test('VoxelVolumeBuilder ignores mixed-orientation localizer images', () {
+    const coronalScoutOrientation = ImageOrientation(
+      rowX: 1,
+      rowY: 0,
+      rowZ: 0,
+      columnX: 0,
+      columnY: 0,
+      columnZ: 1,
+    );
+    final series = DicomSeries(
+      instanceUid: 'S1',
+      description: 'localizer',
+      modality: 'MR',
+      instances: [
+        _buildInstance(sop: 'a', number: 1, pixels: [10, 10, 10, 10], z: 0),
+        _buildInstance(sop: 'b', number: 2, pixels: [20, 20, 20, 20], z: 2),
+        _buildInstance(sop: 'c', number: 3, pixels: [30, 30, 30, 30], z: 4),
+        _buildInstance(
+          sop: 'd',
+          number: 4,
+          pixels: [200, 200, 200, 200],
+          z: 0,
+          orientation: coronalScoutOrientation,
+        ),
+        _buildInstance(
+          sop: 'e',
+          number: 5,
+          pixels: [210, 210, 210, 210],
+          z: 2,
+          orientation: coronalScoutOrientation,
+        ),
+      ],
+    );
+
+    final volume = const VoxelVolumeBuilder().build(series);
+
+    expect(volume.depth, 3);
+    expect(volume.values[0], 10);
+    expect(volume.values[4], 20);
+    expect(volume.values[8], 30);
+    expect(volume.values, isNot(contains(200)));
+    expect(volume.values, isNot(contains(210)));
   });
 
   test('VoxelVolumeBuilder throws on missing pixel data', () {

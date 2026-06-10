@@ -27,9 +27,67 @@ void main() {
     expect(volume.depthMm, 2);
     expect(volume.points, isNotEmpty);
   });
+
+  test('collapses repeated slice positions for multivolume series', () {
+    final series = DicomSeries(
+      instanceUid: 'series',
+      description: 'DWI',
+      modality: 'MR',
+      instances: [
+        _instance(1, [0, 128, 255, 0], z: 0),
+        _instance(2, [255, 128, 0, 255], z: 2),
+        _instance(3, [0, 128, 255, 0], z: 0),
+        _instance(4, [255, 128, 0, 255], z: 2),
+      ],
+    );
+
+    final volume = const VolumePointCloudBuilder(
+      targetSamplesPerAxis: 2,
+      opacityThreshold: 0.01,
+    ).build(series);
+
+    expect(volume.sliceCount, 2);
+    expect(volume.depthMm, 2);
+  });
+
+  test('uses one compatible orientation stack from localizer series', () {
+    const coronalScoutOrientation = ImageOrientation(
+      rowX: 1,
+      rowY: 0,
+      rowZ: 0,
+      columnX: 0,
+      columnY: 0,
+      columnZ: 1,
+    );
+    final series = DicomSeries(
+      instanceUid: 'series',
+      description: 'localizer',
+      modality: 'MR',
+      instances: [
+        _instance(1, [0, 128, 255, 0], z: 0),
+        _instance(2, [255, 128, 0, 255], z: 2),
+        _instance(3, [255, 255, 255, 255], z: 4),
+        _instance(4, [0, 0, 0, 0], z: 0, orientation: coronalScoutOrientation),
+        _instance(5, [0, 0, 0, 0], z: 2, orientation: coronalScoutOrientation),
+      ],
+    );
+
+    final volume = const VolumePointCloudBuilder(
+      targetSamplesPerAxis: 2,
+      opacityThreshold: 0.01,
+    ).build(series);
+
+    expect(volume.sliceCount, 3);
+    expect(volume.depthMm, 4);
+  });
 }
 
-DicomInstance _instance(int number, List<int> pixels, {required double z}) {
+DicomInstance _instance(
+  int number,
+  List<int> pixels, {
+  required double z,
+  ImageOrientation? orientation,
+}) {
   return DicomInstance(
     sopClassUid: '1.2.840.10008.5.1.4.1.1.4',
     sopInstanceUid: '1.2.3.$number',
@@ -40,14 +98,16 @@ DicomInstance _instance(int number, List<int> pixels, {required double z}) {
       columns: 2,
       pixelSpacing: const VoxelSpacing(rowMm: 1, columnMm: 1),
       imagePosition: ImagePosition(0, 0, z),
-      imageOrientation: const ImageOrientation(
-        rowX: 1,
-        rowY: 0,
-        rowZ: 0,
-        columnX: 0,
-        columnY: 1,
-        columnZ: 0,
-      ),
+      imageOrientation:
+          orientation ??
+          const ImageOrientation(
+            rowX: 1,
+            rowY: 0,
+            rowZ: 0,
+            columnX: 0,
+            columnY: 1,
+            columnZ: 0,
+          ),
       pixelData: const PixelDataDescriptor(
         samplesPerPixel: 1,
         bitsAllocated: 16,

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dicom_viewer/dicom/domain/dicom_models.dart';
 import 'package:dicom_viewer/dicom/pixel/decoded_slice.dart';
 import 'package:dicom_viewer/dicom/pixel/pixel_decoder.dart';
+import 'package:dicom_viewer/viewer/rendering/volume_instance_ordering.dart';
 
 class VoxelVolume {
   const VoxelVolume({
@@ -71,11 +72,13 @@ class VoxelVolumeBuilder {
     if (series.instances.isEmpty) {
       throw const VoxelVolumeException('Series has no instances.');
     }
-    final sorted = _sortByPosition(series.instances);
+    final sorted = VolumeInstanceOrdering.sortAndCollapseByPosition(
+      series.instances,
+    );
     final first = sorted.first;
     if (first.metadata.pixelData.isColor ||
         first.metadata.pixelData.isPaletteColor) {
-      return _buildLuminanceVolume(sorted, decoder);
+      return _buildLuminanceVolume(sorted, decoder, series.instanceUid);
     }
     final rows = first.metadata.rows;
     final columns = first.metadata.columns;
@@ -149,6 +152,7 @@ class VoxelVolumeBuilder {
   VoxelVolume _buildLuminanceVolume(
     List<DicomInstance> sorted,
     PixelDecoder decoder,
+    String seriesInstanceUid,
   ) {
     final first = sorted.first;
     final rows = first.metadata.rows;
@@ -204,7 +208,8 @@ class VoxelVolumeBuilder {
       for (var i = 0; i < pixelCount; i += 1) {
         final double y;
         if (channels >= 3) {
-          y = 0.299 * decoded.values[i * 3] +
+          y =
+              0.299 * decoded.values[i * 3] +
               0.587 * decoded.values[i * 3 + 1] +
               0.114 * decoded.values[i * 3 + 2];
         } else {
@@ -231,7 +236,7 @@ class VoxelVolumeBuilder {
       values: buffer,
       minValue: minValue.isFinite ? minValue : 0,
       maxValue: maxValue.isFinite ? maxValue : 0,
-      seriesInstanceUid: sorted.first.sopInstanceUid,
+      seriesInstanceUid: seriesInstanceUid,
     );
   }
 
@@ -257,40 +262,6 @@ class VoxelVolumeBuilder {
       minValue: volume.minValue,
       maxValue: volume.maxValue,
     );
-  }
-
-  List<DicomInstance> _sortByPosition(List<DicomInstance> instances) {
-    final withNumber = instances
-        .where((i) => i.instanceNumber != null)
-        .toList();
-    final withoutNumber = instances
-        .where((i) => i.instanceNumber == null)
-        .toList();
-    if (withNumber.isNotEmpty) {
-      withNumber.sort((a, b) => a.instanceNumber!.compareTo(b.instanceNumber!));
-    }
-    final withPosition = withoutNumber
-        .where((i) => i.metadata.imagePosition != null)
-        .toList();
-    if (withPosition.isNotEmpty) {
-      withPosition.sort((a, b) {
-        final ap = a.metadata.imagePosition!;
-        final bp = b.metadata.imagePosition!;
-        final dz = (bp.z - ap.z).abs();
-        final dy = (bp.y - ap.y).abs();
-        final dx = (bp.x - ap.x).abs();
-        if (dz >= dy && dz >= dx) {
-          return ap.z.compareTo(bp.z);
-        } else if (dy >= dx) {
-          return ap.y.compareTo(bp.y);
-        }
-        return ap.x.compareTo(bp.x);
-      });
-    }
-    final noInfo = withoutNumber
-        .where((i) => i.metadata.imagePosition == null)
-        .toList();
-    return [...withNumber, ...withPosition, ...noInfo];
   }
 
   double _sliceSpacing(List<DicomInstance> instances) {
