@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DICOM Viewer — Medical Imaging Platform</title>
+  <meta name="description" content="Open-source cross-platform DICOM / MRI viewer with 2D slice, multi-planar reconstruction, and interactive 3D volume rendering." />
+  <style>
+    :root {
+      --bg:          #0D1216;
+      --surface:     #171D21;
+      --panel:       #20272C;
+      --border:      #2D3B42;
+      --teal:        #39A9A7;
+      --teal-bright: #4DD0E1;
+      --teal-glow:   rgba(77,208,225,0.12);
+      --teal-glow2:  rgba(57,169,167,0.08);
+      --text:        #E8F0F3;
+      --sub:         #B8C7CD;
+      --muted:       #6E858E;
+      --warn:        #E0B84D;
+      --radius:      12px;
+      --radius-sm:   8px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Nav ──────────────────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; gap: 24px;
+      padding: 0 clamp(20px, 6vw, 80px);
+      height: 58px;
+      background: rgba(13,18,22,0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 9px;
+      font-weight: 700; font-size: 15px; color: var(--text);
+      text-decoration: none; white-space: nowrap;
+    }
+    .nav-spacer { flex: 1; }
+    .nav-links { display: flex; align-items: center; gap: 6px; }
+    .nav-link {
+      color: var(--sub); text-decoration: none; font-size: 13.5px;
+      padding: 5px 10px; border-radius: 6px; transition: color .15s, background .15s;
+    }
+    .nav-link:hover { color: var(--teal-bright); background: var(--teal-glow); }
+    .nav-gh {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--sub); font-size: 13px; text-decoration: none; transition: all .15s;
+    }
+    .nav-gh:hover { border-color: var(--teal); color: var(--teal-bright); }
+
+    /* ── Buttons ──────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 10px 22px; border-radius: var(--radius-sm);
+      font-size: 14px; font-weight: 600; text-decoration: none;
+      cursor: pointer; border: none; transition: all .18s;
+    }
+    .btn-primary {
+      background: var(--teal); color: #0D1216;
+    }
+    .btn-primary:hover {
+      background: var(--teal-bright);
+      box-shadow: 0 0 28px rgba(77,208,225,.35);
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: transparent; color: var(--teal-bright);
+      border: 1px solid var(--teal);
+    }
+    .btn-outline:hover {
+      background: var(--teal-glow);
+      box-shadow: 0 0 20px rgba(57,169,167,.2);
+      transform: translateY(-1px);
+    }
+
+    /* ── Hero ─────────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 96px clamp(20px, 6vw, 80px) 80px;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(57,169,167,.14) 0%, transparent 70%);
+    }
+    .hero-icon {
+      width: 96px; height: 96px; margin: 0 auto 32px;
+      filter: drop-shadow(0 0 32px rgba(77,208,225,.45));
+      animation: float 5s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-6px); }
+    }
+    h1 {
+      font-size: clamp(38px, 7vw, 68px);
+      font-weight: 800; letter-spacing: -1.5px;
+      background: linear-gradient(140deg, var(--text) 35%, var(--teal-bright) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin-bottom: 18px;
+    }
+    .hero-tagline {
+      font-size: clamp(16px, 2.2vw, 20px); color: var(--sub);
+      max-width: 580px; margin: 0 auto 40px; line-height: 1.7;
+    }
+    .hero-cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .badge-row {
+      display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+      margin-top: 52px;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 13px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 100px; font-size: 12px; color: var(--sub);
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+
+    /* ── Divider ──────────────────────────────────────────── */
+    .full-divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+    /* ── Section wrapper ──────────────────────────────────── */
+    .section-wrap {
+      padding: 80px clamp(20px, 6vw, 80px);
+      max-width: 1200px; margin: 0 auto;
+    }
+    .section-label {
+      font-size: 11.5px; font-weight: 700; letter-spacing: 2.5px;
+      text-transform: uppercase; color: var(--teal); margin-bottom: 10px;
+    }
+    h2 {
+      font-size: clamp(24px, 3.5vw, 38px); font-weight: 800;
+      letter-spacing: -.5px; margin-bottom: 10px;
+    }
+    .section-sub {
+      color: var(--sub); font-size: 15px; margin-bottom: 48px; max-width: 520px;
+    }
+
+    /* ── Feature grid ─────────────────────────────────────── */
+    .features-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px;
+    }
+    .feature-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 26px;
+      transition: border-color .2s, box-shadow .2s, transform .2s;
+    }
+    .feature-card:hover {
+      border-color: var(--teal); transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.35), 0 0 20px var(--teal-glow2);
+    }
+    .feature-icon {
+      width: 42px; height: 42px; background: var(--teal-glow);
+      border: 1px solid rgba(57,169,167,.28); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-bottom: 16px;
+    }
+    .feature-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p  { font-size: 13.5px; color: var(--sub); line-height: 1.65; }
+
+    /* ── Downloads ────────────────────────────────────────── */
+    .release-bar {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 12px;
+      margin-bottom: 36px;
+    }
+    .release-tag {
+      padding: 4px 12px; background: var(--teal-glow);
+      border: 1px solid rgba(57,169,167,.35); border-radius: 100px;
+      color: var(--teal-bright); font-weight: 700; font-family: ui-monospace, monospace;
+      font-size: 13px;
+    }
+    .release-date { font-size: 13px; color: var(--muted); }
+
+    .dl-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(186px, 1fr)); gap: 16px;
+    }
+    .dl-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 26px 20px 22px;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      text-decoration: none; transition: all .2s; cursor: pointer;
+    }
+    .dl-card:hover {
+      border-color: var(--teal); transform: translateY(-3px);
+      box-shadow: 0 16px 48px rgba(0,0,0,.4), 0 0 24px var(--teal-glow);
+    }
+    .dl-platform-icon { font-size: 38px; line-height: 1; }
+    .dl-name  { font-size: 15px; font-weight: 700; color: var(--text); }
+    .dl-arch  { font-size: 11.5px; color: var(--muted); letter-spacing: .5px; }
+    .dl-file  {
+      font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace;
+      text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap; width: 100%;
+    }
+    .dl-btn {
+      margin-top: 6px; width: 100%;
+      padding: 8px 0; background: var(--teal-glow);
+      border: 1px solid rgba(57,169,167,.4); border-radius: var(--radius-sm);
+      color: var(--teal-bright); font-size: 13px; font-weight: 600;
+      text-align: center; transition: background .15s;
+    }
+    .dl-card:hover .dl-btn  { background: rgba(77,208,225,.2); }
+    .dl-card.pending .dl-btn { color: var(--muted); border-color: var(--border); background: transparent; }
+
+    /* ── Notes ────────────────────────────────────────────── */
+    .install-notes {
+      margin-top: 28px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;
+    }
+    .note-card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 16px 18px;
+      font-size: 13px; color: var(--sub); line-height: 1.7;
+    }
+    .note-card .platform { font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .note-card code {
+      font-family: ui-monospace, monospace; font-size: 11.5px;
+      background: rgba(255,255,255,.06); padding: 1px 5px; border-radius: 4px;
+      color: var(--teal-bright);
+    }
+
+    /* ── Stack section ────────────────────────────────────── */
+    .stack-row { display: flex; flex-wrap: wrap; gap: 12px; }
+    .stack-pill {
+      padding: 7px 16px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 100px; font-size: 13px; color: var(--sub); transition: all .15s;
+    }
+    .stack-pill:hover { border-color: var(--teal); color: var(--teal-bright); }
+
+    /* ── Footer ───────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 36px clamp(20px, 6vw, 80px);
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    }
+    .footer-logo { font-weight: 700; font-size: 14px; }
+    .footer-copy  { font-size: 13px; color: var(--muted); }
+    .footer-spacer { flex: 1; }
+    footer a { color: var(--muted); text-decoration: none; font-size: 13px; transition: color .15s; }
+    footer a:hover { color: var(--teal-bright); }
+
+    @media (max-width: 600px) {
+      .nav-links .nav-link { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Navigation ───────────────────────────────────────────────────────── -->
+<nav>
+  <a class="nav-logo" href="#">
+    <svg width="26" height="26" viewBox="0 0 100 100" fill="none">
+      <rect width="100" height="100" rx="22" fill="#171D21"/>
+      <circle cx="50" cy="51" r="42" stroke="#39A9A7" stroke-width="3.5"/>
+      <line x1="10" y1="44" x2="90" y2="44" stroke="#39A9A7" stroke-opacity=".22" stroke-width=".9"/>
+      <line x1="8"  y1="51" x2="92" y2="51" stroke="#39A9A7" stroke-opacity=".22" stroke-width=".9"/>
+      <line x1="10" y1="58" x2="90" y2="58" stroke="#39A9A7" stroke-opacity=".22" stroke-width=".9"/>
+      <line x1="50" y1="9"  x2="50" y2="17" stroke="#4DD0E1" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="50" y1="85" x2="50" y2="93" stroke="#4DD0E1" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="8"  y1="51" x2="16" y2="51" stroke="#4DD0E1" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="84" y1="51" x2="92" y2="51" stroke="#4DD0E1" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M50 20 C36 20 21 31 21 46 C21 59 30 69 41 72 C44 73 47 74 50 74 C53 74 56 73 59 72 C70 69 79 59 79 46 C79 31 64 20 50 20Z"
+            fill="#1E2E38" stroke="#4DD0E1" stroke-width="1.8"/>
+      <line x1="50" y1="20" x2="50" y2="62" stroke="#4DD0E1" stroke-width="1.3"/>
+      <path d="M38 40 Q32 50 38 59" fill="none" stroke="#4DD0E1" stroke-width="1.3" stroke-opacity=".7" stroke-linecap="round"/>
+      <path d="M62 40 Q68 50 62 59" fill="none" stroke="#4DD0E1" stroke-width="1.3" stroke-opacity=".7" stroke-linecap="round"/>
+    </svg>
+    DICOM Viewer
+  </a>
+  <div class="nav-spacer"></div>
+  <div class="nav-links">
+    <a class="nav-link" href="#features">Features</a>
+    <a class="nav-link" href="#download">Download</a>
+  </div>
+  <a class="nav-gh" href="https://github.com/__GITHUB_REPOSITORY__" target="_blank" rel="noopener">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+    </svg>
+    GitHub
+  </a>
+</nav>
+
+<!-- ── Hero ─────────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <svg class="hero-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" rx="22" fill="#171D21"/>
+    <!-- Subtle outer glow ring -->
+    <circle cx="50" cy="51" r="47" stroke="#39A9A7" stroke-opacity=".12" stroke-width="1"/>
+    <!-- Main scanner ring -->
+    <circle cx="50" cy="51" r="42" stroke="#39A9A7" stroke-width="3.8"/>
+    <!-- Scan lines -->
+    <line x1="11" y1="37" x2="89" y2="37" stroke="#39A9A7" stroke-opacity=".18" stroke-width="1"/>
+    <line x1="9"  y1="44" x2="91" y2="44" stroke="#39A9A7" stroke-opacity=".18" stroke-width="1"/>
+    <line x1="8"  y1="51" x2="92" y2="51" stroke="#39A9A7" stroke-opacity=".18" stroke-width="1"/>
+    <line x1="9"  y1="58" x2="91" y2="58" stroke="#39A9A7" stroke-opacity=".18" stroke-width="1"/>
+    <line x1="11" y1="65" x2="89" y2="65" stroke="#39A9A7" stroke-opacity=".18" stroke-width="1"/>
+    <!-- Crosshair ticks -->
+    <line x1="50" y1="8"  x2="50" y2="18" stroke="#4DD0E1" stroke-width="2.8" stroke-linecap="round"/>
+    <line x1="50" y1="84" x2="50" y2="94" stroke="#4DD0E1" stroke-width="2.8" stroke-linecap="round"/>
+    <line x1="7"  y1="51" x2="17" y2="51" stroke="#4DD0E1" stroke-width="2.8" stroke-linecap="round"/>
+    <line x1="83" y1="51" x2="93" y2="51" stroke="#4DD0E1" stroke-width="2.8" stroke-linecap="round"/>
+    <!-- Brain body -->
+    <path d="M50 20 C36 20 21 31 21 46 C21 59 30 69 41 72 C44 73 47 74 50 74 C53 74 56 73 59 72 C70 69 79 59 79 46 C79 31 64 20 50 20Z"
+          fill="#1E2E38" stroke="#4DD0E1" stroke-width="2"/>
+    <!-- Interhemispheric fissure -->
+    <line x1="50" y1="20" x2="50" y2="63" stroke="#4DD0E1" stroke-width="1.5" stroke-opacity=".9"/>
+    <!-- Left hemisphere sulci -->
+    <path d="M37 38 Q30 50 37 61" fill="none" stroke="#4DD0E1" stroke-width="1.5" stroke-opacity=".65" stroke-linecap="round"/>
+    <path d="M43 31 Q35 43 40 55" fill="none" stroke="#4DD0E1" stroke-width="1.1" stroke-opacity=".45" stroke-linecap="round"/>
+    <!-- Right hemisphere sulci -->
+    <path d="M63 38 Q70 50 63 61" fill="none" stroke="#4DD0E1" stroke-width="1.5" stroke-opacity=".65" stroke-linecap="round"/>
+    <path d="M57 31 Q65 43 60 55" fill="none" stroke="#4DD0E1" stroke-width="1.1" stroke-opacity=".45" stroke-linecap="round"/>
+  </svg>
+
+  <h1>DICOM Viewer</h1>
+  <p class="hero-tagline">
+    Open-source medical imaging platform with 2D slice view,
+    multi-planar reconstruction, and interactive 3D volume rendering —
+    built with Flutter, runs everywhere.
+  </p>
+  <div class="hero-cta">
+    <a href="#download" class="btn btn-primary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Download
+    </a>
+    <a href="https://github.com/__GITHUB_REPOSITORY__" target="_blank" rel="noopener" class="btn btn-outline">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+      View on GitHub
+    </a>
+  </div>
+
+  <div class="badge-row">
+    <span class="badge"><span class="badge-dot"></span>macOS</span>
+    <span class="badge"><span class="badge-dot"></span>Windows</span>
+    <span class="badge"><span class="badge-dot"></span>Linux</span>
+    <span class="badge"><span class="badge-dot"></span>iOS</span>
+    <span class="badge"><span class="badge-dot"></span>Android</span>
+    <span class="badge">Open Source</span>
+    <span class="badge">Flutter 3</span>
+    <span class="badge">DICOM / NEMA</span>
+  </div>
+</section>
+
+<hr class="full-divider" />
+
+<!-- ── Features ─────────────────────────────────────────────────────────── -->
+<div class="section-wrap" id="features">
+  <p class="section-label">Capabilities</p>
+  <h2>Everything you need for medical imaging</h2>
+  <p class="section-sub">From basic slice browsing to advanced volume rendering — a full imaging workflow in one app.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🔬</div>
+      <h3>2D Slice View</h3>
+      <p>Browse axial, sagittal, and coronal slices with smooth navigation, keyboard shortcuts, and pixel-perfect zoom.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧊</div>
+      <h3>3D Volume Rendering</h3>
+      <p>Interactive point-cloud and voxel-box volume renderer. Rotate, clip, and inspect the full anatomy in real time.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">✚</div>
+      <h3>Multi-Planar Reconstruction</h3>
+      <p>Synchronised MPR layout with crosshair navigation — instantly correlate structures across all three planes.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎨</div>
+      <h3>Advanced Image Filtering</h3>
+      <p>Bilateral denoising, anisotropic diffusion, edge-aware upscaling, sharpening, contrast and brightness control.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📐</div>
+      <h3>Measurement Tools</h3>
+      <p>Distance and angle measurements, window / level adjustment, pan, zoom, and crosshair — all in one toolbar.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📂</div>
+      <h3>Study Browser</h3>
+      <p>Hierarchical patient → study → series browser with search, thumbnails, recent studies strip, and metadata display.</p>
+    </div>
+  </div>
+</div>
+
+<hr class="full-divider" />
+
+<!-- ── Downloads ────────────────────────────────────────────────────────── -->
+<div class="section-wrap" id="download">
+  <p class="section-label">Download</p>
+  <h2>Available on every platform</h2>
+  <p class="section-sub">Pre-built binaries for all major operating systems. No account or subscription required.</p>
+
+  <div class="release-bar">
+    <span>Latest release</span>
+    <span class="release-tag" id="release-tag">loading…</span>
+    <span class="release-date" id="release-date"></span>
+  </div>
+
+  <div class="dl-grid">
+    <a class="dl-card pending" id="dl-macos" href="#" onclick="return guard(this)">
+      <span class="dl-platform-icon">🍎</span>
+      <span class="dl-name">macOS</span>
+      <span class="dl-arch">Apple Silicon &amp; Intel</span>
+      <span class="dl-file" id="dl-macos-file">–</span>
+      <span class="dl-btn" id="dl-macos-btn">Fetching…</span>
+    </a>
+
+    <a class="dl-card pending" id="dl-windows" href="#" onclick="return guard(this)">
+      <span class="dl-platform-icon">🪟</span>
+      <span class="dl-name">Windows</span>
+      <span class="dl-arch">x64</span>
+      <span class="dl-file" id="dl-windows-file">–</span>
+      <span class="dl-btn" id="dl-windows-btn">Fetching…</span>
+    </a>
+
+    <a class="dl-card pending" id="dl-linux" href="#" onclick="return guard(this)">
+      <span class="dl-platform-icon">🐧</span>
+      <span class="dl-name">Linux</span>
+      <span class="dl-arch">x64</span>
+      <span class="dl-file" id="dl-linux-file">–</span>
+      <span class="dl-btn" id="dl-linux-btn">Fetching…</span>
+    </a>
+
+    <a class="dl-card pending" id="dl-ios" href="#" onclick="return guard(this)">
+      <span class="dl-platform-icon">📱</span>
+      <span class="dl-name">iOS</span>
+      <span class="dl-arch">Unsigned IPA</span>
+      <span class="dl-file" id="dl-ios-file">–</span>
+      <span class="dl-btn" id="dl-ios-btn">Fetching…</span>
+    </a>
+
+    <a class="dl-card pending" id="dl-android" href="#" onclick="return guard(this)">
+      <span class="dl-platform-icon">🤖</span>
+      <span class="dl-name">Android</span>
+      <span class="dl-arch">APK (sideload)</span>
+      <span class="dl-file" id="dl-android-file">–</span>
+      <span class="dl-btn" id="dl-android-btn">Fetching…</span>
+    </a>
+  </div>
+
+  <!-- Installation notes -->
+  <div class="install-notes">
+    <div class="note-card">
+      <div class="platform">🍎 macOS</div>
+      Unzip the archive, then right-click the <code>.app</code> and choose <strong>Open</strong>
+      to bypass Gatekeeper on first launch. Or run:<br/>
+      <code>xattr -rd com.apple.quarantine dicom_viewer.app</code>
+    </div>
+    <div class="note-card">
+      <div class="platform">🪟 Windows</div>
+      Unzip and run <code>dicom_viewer.exe</code>. If SmartScreen appears, click
+      <em>More info → Run anyway</em>.
+    </div>
+    <div class="note-card">
+      <div class="platform">🐧 Linux</div>
+      Extract the <code>.tar.gz</code> and run <code>./dicom_viewer</code>.
+      You may need: <code>sudo apt install libgtk-3-0</code>
+    </div>
+    <div class="note-card">
+      <div class="platform">📱 iOS</div>
+      The IPA is unsigned. Install via
+      <a href="https://altstore.io" target="_blank" rel="noopener" style="color:var(--teal-bright)">AltStore</a>
+      or <a href="https://sideloadly.io" target="_blank" rel="noopener" style="color:var(--teal-bright)">Sideloadly</a>.
+    </div>
+    <div class="note-card">
+      <div class="platform">🤖 Android</div>
+      Enable <em>Install from unknown sources</em> in Settings → Security,
+      then open the APK to install.
+    </div>
+  </div>
+</div>
+
+<hr class="full-divider" />
+
+<!-- ── Built with ───────────────────────────────────────────────────────── -->
+<div class="section-wrap">
+  <p class="section-label">Technology</p>
+  <h2>Built with</h2>
+  <p class="section-sub">A modern, all-Dart stack with zero native plugin dependencies for the core viewer logic.</p>
+  <div class="stack-row">
+    <span class="stack-pill">Flutter 3</span>
+    <span class="stack-pill">Dart</span>
+    <span class="stack-pill">CustomPainter / Canvas</span>
+    <span class="stack-pill">Drift (SQLite)</span>
+    <span class="stack-pill">DICOM / NEMA</span>
+    <span class="stack-pill">Volume Ray-casting</span>
+    <span class="stack-pill">Image Filtering</span>
+    <span class="stack-pill">File Picker</span>
+  </div>
+</div>
+
+<!-- ── Footer ───────────────────────────────────────────────────────────── -->
+<footer>
+  <svg width="20" height="20" viewBox="0 0 100 100" fill="none">
+    <rect width="100" height="100" rx="20" fill="#20272C"/>
+    <circle cx="50" cy="51" r="42" stroke="#39A9A7" stroke-width="4"/>
+    <path d="M50 20 C36 20 21 31 21 46 C21 59 30 69 41 72 C44 73 47 74 50 74 C53 74 56 73 59 72 C70 69 79 59 79 46 C79 31 64 20 50 20Z"
+          fill="#1E2E38" stroke="#4DD0E1" stroke-width="2"/>
+    <line x1="50" y1="20" x2="50" y2="62" stroke="#4DD0E1" stroke-width="1.5"/>
+  </svg>
+  <span class="footer-logo">DICOM Viewer</span>
+  <span class="footer-copy">© 2026</span>
+  <div class="footer-spacer"></div>
+  <a href="https://github.com/__GITHUB_REPOSITORY__/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+  <a href="https://github.com/__GITHUB_REPOSITORY__" target="_blank" rel="noopener">GitHub</a>
+  <a href="https://github.com/__GITHUB_REPOSITORY__/releases" target="_blank" rel="noopener">Releases</a>
+  <a href="https://github.com/__GITHUB_REPOSITORY__/issues" target="_blank" rel="noopener">Issues</a>
+</footer>
+
+<script>
+  const REPO = '__GITHUB_REPOSITORY__';
+
+  // Prevent clicks on pending cards
+  function guard(card) {
+    return !card.classList.contains('pending');
+  }
+
+  function fmtBytes(b) {
+    if (b >= 1024 * 1024) return (b / 1024 / 1024).toFixed(1) + ' MB';
+    return (b / 1024).toFixed(0) + ' KB';
+  }
+
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  // Map asset filename fragments → platform card ids
+  const PLATFORM_MAP = [
+    { id: 'macos',   match: a => a.name.includes('macos')   },
+    { id: 'windows', match: a => a.name.includes('windows') },
+    { id: 'linux',   match: a => a.name.includes('linux')   },
+    { id: 'ios',     match: a => a.name.endsWith('.ipa')     },
+    { id: 'android', match: a => a.name.endsWith('.apk')     },
+  ];
+
+  async function loadRelease() {
+    try {
+      const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
+        headers: { Accept: 'application/vnd.github+json' }
+      });
+      if (!res.ok) throw new Error(res.status);
+      const rel = await res.json();
+
+      document.getElementById('release-tag').textContent  = rel.tag_name;
+      document.getElementById('release-date').textContent = fmtDate(rel.published_at);
+
+      for (const { id, match } of PLATFORM_MAP) {
+        const asset = rel.assets.find(match);
+        const card  = document.getElementById(`dl-${id}`);
+        if (!asset || !card) continue;
+
+        card.href = asset.browser_download_url;
+        card.classList.remove('pending');
+        document.getElementById(`dl-${id}-file`).textContent = asset.name;
+        document.getElementById(`dl-${id}-btn`).textContent  = `↓ Download (${fmtBytes(asset.size)})`;
+      }
+    } catch (err) {
+      document.getElementById('release-tag').textContent = 'see GitHub';
+      console.warn('Could not load release:', err);
+    }
+  }
+
+  loadRelease();
+</script>
+</body>
+</html>

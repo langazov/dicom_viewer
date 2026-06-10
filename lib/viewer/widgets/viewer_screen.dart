@@ -803,6 +803,8 @@ class _PanelToggleButton extends StatelessWidget {
     return SizedBox(
       width: 16,
       child: InkWell(
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
         onTap: onTap,
         child: Container(
           color: const Color(0xFF1A2227),

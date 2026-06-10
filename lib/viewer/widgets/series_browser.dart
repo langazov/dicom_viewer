@@ -248,6 +248,8 @@ class _RecentSeriesStrip extends StatelessWidget {
               final selected = state.selectedSeriesId == series.instanceUid;
               return InkWell(
                 borderRadius: BorderRadius.circular(6),
+                splashColor: Colors.transparent,
+                highlightColor: Colors.transparent,
                 onTap: () => onSeriesSelected(series.instanceUid),
                 child: Container(
                   width: 140,

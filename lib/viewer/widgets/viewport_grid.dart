@@ -156,6 +156,8 @@ class _ViewportTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(6),
       child: InkWell(
         borderRadius: BorderRadius.circular(6),
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
         onTap: onTap,
         child: DecoratedBox(
           decoration: BoxDecoration(

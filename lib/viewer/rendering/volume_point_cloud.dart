@@ -13,6 +13,7 @@ class VolumePointCloud {
     required this.heightMm,
     required this.depthMm,
     required this.sliceCount,
+    required this.voxelSizeMm,
     this.skippedReason,
   });
 
@@ -21,6 +22,8 @@ class VolumePointCloud {
   final double heightMm;
   final double depthMm;
   final int sliceCount;
+  /// Side length (mm) of each sampled voxel cube, based on pixel spacing and sampling stride.
+  final double voxelSizeMm;
   final String? skippedReason;
 
   bool get isEmpty => points.isEmpty;
@@ -57,6 +60,7 @@ class VolumePointCloudBuilder {
         heightMm: 0,
         depthMm: 0,
         sliceCount: 0,
+        voxelSizeMm: 1,
       );
     }
 
@@ -71,6 +75,11 @@ class VolumePointCloudBuilder {
     final widthMm = firstMetadata.columns * columnSpacing;
     final heightMm = firstMetadata.rows * rowSpacing;
     final depthMm = max(1, instances.length - 1) * sliceSpacing;
+    final repStride = max(
+      1,
+      max(firstMetadata.columns, firstMetadata.rows) ~/ targetSamplesPerAxis,
+    );
+    final voxelSizeMm = (repStride * max(columnSpacing, rowSpacing)).toDouble();
     final points = <VolumePoint>[];
     final decoder = const PixelDecoder();
 
@@ -147,6 +156,7 @@ class VolumePointCloudBuilder {
       heightMm: heightMm,
       depthMm: depthMm,
       sliceCount: instances.length,
+      voxelSizeMm: voxelSizeMm,
     );
   }
 

@@ -84,6 +84,7 @@ class _VolumeViewState extends State<VolumeView> {
   double _zoom = 1.0;
   double _scaleStartZoom = 1.0;
   double _opacityThreshold = 0.05;
+  bool _drawBoxes = true;
   bool _clipEnabled = false;
   ClipBox _clipBox = const ClipBox();
   String? _error;
@@ -211,6 +212,7 @@ class _VolumeViewState extends State<VolumeView> {
                   opacityThreshold: _opacityThreshold,
                   color: Theme.of(context).colorScheme.primary,
                   clipBox: _clipEnabled ? _clipBox : null,
+                  drawBoxes: _drawBoxes,
                 ),
                 child: const SizedBox.expand(),
               ),
@@ -280,6 +282,34 @@ class _VolumeViewState extends State<VolumeView> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Tooltip(
+                message: _drawBoxes ? 'Switch to points' : 'Switch to boxes',
+                child: GestureDetector(
+                  onTap: () => setState(() => _drawBoxes = !_drawBoxes),
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: _drawBoxes
+                          ? const Color(0xFF4DD0E1).withValues(alpha: 0.2)
+                          : const Color(0xAA000000),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: _drawBoxes
+                            ? const Color(0xFF4DD0E1)
+                            : Colors.transparent,
+                      ),
+                    ),
+                    child: Icon(
+                      _drawBoxes ? Icons.view_in_ar : Icons.scatter_plot,
+                      size: 14,
+                      color: _drawBoxes
+                          ? const Color(0xFF4DD0E1)
+                          : const Color(0xFFB8C7CD),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 6),
@@ -441,6 +471,7 @@ class _VolumePainter extends CustomPainter {
     required this.opacityThreshold,
     required this.color,
     this.clipBox,
+    this.drawBoxes = true,
   });
 
   final VolumePointCloud volume;
@@ -450,6 +481,9 @@ class _VolumePainter extends CustomPainter {
   final double opacityThreshold;
   final Color color;
   final ClipBox? clipBox;
+  final bool drawBoxes;
+
+  double get _voxelSizeMm => volume.voxelSizeMm;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -516,12 +550,32 @@ class _VolumePainter extends CustomPainter {
     }
 
     final paint = Paint()..style = PaintingStyle.fill;
-    for (final point in projected) {
-      if (point.intensity < opacityThreshold) continue;
-      final alpha = (40 + point.intensity * 180).round().clamp(0, 255);
-      final gray = (point.intensity * 255).round().clamp(0, 255);
-      paint.color = Color.fromARGB(alpha, gray, gray, gray);
-      canvas.drawCircle(point.offset, 1.15, paint);
+    if (drawBoxes) {
+      final cubePixelSize = (_voxelSizeMm * scale).clamp(1.5, 24.0);
+      final halfCube = cubePixelSize / 2;
+      for (final point in projected) {
+        if (point.intensity < opacityThreshold) continue;
+        final alpha = (40 + point.intensity * 180).round().clamp(0, 255);
+        final gray = (point.intensity * 255).round().clamp(0, 255);
+        paint.color = Color.fromARGB(alpha, gray, gray, gray);
+        canvas.drawRect(
+          Rect.fromLTWH(
+            point.offset.dx - halfCube,
+            point.offset.dy - halfCube,
+            cubePixelSize,
+            cubePixelSize,
+          ),
+          paint,
+        );
+      }
+    } else {
+      for (final point in projected) {
+        if (point.intensity < opacityThreshold) continue;
+        final alpha = (40 + point.intensity * 180).round().clamp(0, 255);
+        final gray = (point.intensity * 255).round().clamp(0, 255);
+        paint.color = Color.fromARGB(alpha, gray, gray, gray);
+        canvas.drawCircle(point.offset, 1.15, paint);
+      }
     }
 
     if (clipBox != null) {
@@ -770,7 +824,8 @@ class _VolumePainter extends CustomPainter {
         oldDelegate.zoom != zoom ||
         oldDelegate.opacityThreshold != opacityThreshold ||
         oldDelegate.color != color ||
-        oldDelegate.clipBox != clipBox;
+        oldDelegate.clipBox != clipBox ||
+        oldDelegate.drawBoxes != drawBoxes;
   }
 }
 
