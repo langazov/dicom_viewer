@@ -26,6 +26,7 @@ class MprView extends StatefulWidget {
     this.anisotropicIterations = 5,
     this.anisotropicKappa = 25.0,
     this.edgeUpscaleStrength = 1.0,
+    this.onSliceScrolled,
     this.zoom = 1,
     this.panX = 0,
     this.panY = 0,
@@ -54,6 +55,7 @@ class MprView extends StatefulWidget {
   final int anisotropicIterations;
   final double anisotropicKappa;
   final double edgeUpscaleStrength;
+  final ValueChanged<int>? onSliceScrolled;
   final double zoom;
   final double panX;
   final double panY;
@@ -130,6 +132,9 @@ class _MprViewState extends State<MprView> {
       pixelAspectRatio: slice.spacingY == 0
           ? 1
           : slice.spacingX / slice.spacingY,
+      orientationCorners: _orientationCorners(widget.plane),
+      windowCenter: widget.windowCenter,
+      windowWidth: widget.windowWidth,
       zoom: widget.zoom,
       panX: widget.panX,
       panY: widget.panY,
@@ -141,6 +146,14 @@ class _MprViewState extends State<MprView> {
       onPanChanged: widget.onPanChanged,
       onResetRequested: widget.onResetRequested,
       onFitRequested: widget.onFitRequested,
+      onSliceScrolled: widget.onSliceScrolled != null
+          ? (delta) {
+              final maxNormal = _maxNormal(widget.volume, widget.plane) - 1;
+              widget.onSliceScrolled!(
+                (_normalIndex + delta).clamp(0, maxNormal),
+              );
+            }
+          : null,
       sliceLabel: '${_planeLabel(widget.plane)} ${_normalIndex + 1}',
       scaleBarMm:
           slice.spacingX *
@@ -168,6 +181,14 @@ class _MprViewState extends State<MprView> {
       MprPlane.axial => 'Axial',
       MprPlane.sagittal => 'Sagittal',
       MprPlane.coronal => 'Coronal',
+    };
+  }
+
+  static ViewOrientationCorners _orientationCorners(MprPlane plane) {
+    return switch (plane) {
+      MprPlane.sagittal => ViewOrientationCorners.sagittal,
+      MprPlane.coronal => ViewOrientationCorners.coronal,
+      MprPlane.axial => ViewOrientationCorners.axial,
     };
   }
 

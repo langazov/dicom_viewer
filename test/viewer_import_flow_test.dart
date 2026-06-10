@@ -33,10 +33,16 @@ void main() {
 
     await tester.tap(find.text('T1 axial'));
     await tester.pump();
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-    });
-    await tester.pump();
+
+    // Thumbnail decodes asynchronously via compute() + Future-based image
+    // decoding. Pump multiple async rounds until all 4 RawImages appear.
+    for (var i = 0; i < 10; i++) {
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pump();
+      if (find.byType(RawImage).evaluate().length >= 4) break;
+    }
 
     expect(find.byType(RawImage), findsNWidgets(4));
     expect(find.textContaining('Slice 1/2 | W'), findsOneWidget);

@@ -1,8 +1,13 @@
 import 'dart:ui' as ui;
 
 import 'package:dicom_viewer/dicom/domain/dicom_models.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:dicom_viewer/viewer/rendering/series_thumbnail.dart';
+
+SeriesThumbnail? _buildThumbnailIsolate(DicomSeries series) {
+  return const SeriesThumbnailBuilder().build(series);
+}
 
 class SeriesThumbnailView extends StatefulWidget {
   const SeriesThumbnailView({super.key, required this.series, this.size = 64});
@@ -15,8 +20,6 @@ class SeriesThumbnailView extends StatefulWidget {
 }
 
 class _SeriesThumbnailViewState extends State<SeriesThumbnailView> {
-  static const _builder = SeriesThumbnailBuilder();
-
   ui.Image? _image;
   int _generation = 0;
 
@@ -40,30 +43,35 @@ class _SeriesThumbnailViewState extends State<SeriesThumbnailView> {
     super.dispose();
   }
 
-  void _decode() {
+  Future<void> _decode() async {
     final generation = _generation + 1;
     _generation = generation;
-    final thumb = _builder.build(widget.series);
-    if (thumb == null) {
+    final thumb = await compute(_buildThumbnailIsolate, widget.series);
+    if (!mounted || generation != _generation) return;
+    if (thumb == null) return;
+
+    final buffer = await ui.ImmutableBuffer.fromUint8List(thumb.rgba);
+    final descriptor = ui.ImageDescriptor.raw(
+      buffer,
+      width: thumb.width,
+      height: thumb.height,
+      pixelFormat: ui.PixelFormat.rgba8888,
+    );
+    final codec = await descriptor.instantiateCodec();
+    final frame = await codec.getNextFrame();
+    buffer.dispose();
+    descriptor.dispose();
+    codec.dispose();
+
+    if (!mounted || generation != _generation) {
+      frame.image.dispose();
       return;
     }
-    ui.decodeImageFromPixels(
-      thumb.rgba,
-      thumb.width,
-      thumb.height,
-      ui.PixelFormat.rgba8888,
-      (image) {
-        if (!mounted || generation != _generation) {
-          image.dispose();
-          return;
-        }
-        final oldImage = _image;
-        setState(() {
-          _image = image;
-        });
-        oldImage?.dispose();
-      },
-    );
+    final oldImage = _image;
+    setState(() {
+      _image = frame.image;
+    });
+    oldImage?.dispose();
   }
 
   @override

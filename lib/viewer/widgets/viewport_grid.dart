@@ -290,6 +290,9 @@ class _AxialSliceContent extends StatelessWidget {
         child: SliceImageView(
           buffer: buffer,
           pixelAspectRatio: _pixelAspectRatio(instance.metadata),
+          orientationCorners: ViewOrientationCorners.axial,
+          windowCenter: state.windowCenter,
+          windowWidth: state.windowWidth,
           zoom: transform.zoom,
           panX: transform.panX,
           panY: transform.panY,
@@ -314,6 +317,16 @@ class _AxialSliceContent extends StatelessWidget {
                   onWindowLevelChanged(
                     WindowLevel(center: center, width: width),
                   );
+                }
+              : null,
+          onSliceScrolled: selected
+              ? (delta) {
+                  final max = state.selectedSeriesInstanceCount - 1;
+                  if (max >= 0) {
+                    onSliceChanged(
+                      (state.sliceIndex + delta).clamp(0, max),
+                    );
+                  }
                 }
               : null,
           scaleBarMm: _scaleBarMm(instance.metadata),
@@ -540,12 +553,32 @@ class _MprPlaneContentState extends State<_MprPlaneContent> {
       onPanChanged: selected ? widget.onPanChanged : null,
       onResetRequested: selected ? widget.onResetViewport : null,
       onFitRequested: selected ? widget.onFitViewport : null,
+      onSliceScrolled: selected
+          ? (delta) => widget.onSliceIndexChanged(
+                (widget.normalIndex + delta).clamp(
+                  0,
+                  _maxNormalForPlane(widget.state, widget.plane),
+                ),
+              )
+          : null,
       tool: selected
           ? _sliceToolFor(widget.state.activeTool)
           : SliceImageTool.none,
     );
   }
 }
+
+int _maxNormalForPlane(ViewerState state, MprPlane plane) {
+  final series = state.selectedSeries;
+  if (series == null || series.instances.isEmpty) return 0;
+  final first = series.instances.first;
+  return switch (plane) {
+    MprPlane.sagittal => first.metadata.columns - 1,
+    MprPlane.coronal => first.metadata.rows - 1,
+    MprPlane.axial => series.instances.length - 1,
+  };
+}
+
 
 ActiveViewport _viewportForPlane(MprPlane plane) {
   return switch (plane) {

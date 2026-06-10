@@ -9,6 +9,7 @@ class ViewerToolbar extends StatelessWidget implements PreferredSizeWidget {
     required this.onImportDirectory,
     required this.onLayoutChanged,
     required this.onToolChanged,
+    this.onCancelImport,
   });
 
   final ViewerState state;
@@ -16,6 +17,7 @@ class ViewerToolbar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onImportDirectory;
   final ValueChanged<ViewportLayout> onLayoutChanged;
   final ValueChanged<ViewerTool> onToolChanged;
+  final VoidCallback? onCancelImport;
 
   @override
   Size get preferredSize => const Size.fromHeight(64);
@@ -25,48 +27,62 @@ class ViewerToolbar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       title: const Text('DICOM Viewer'),
       actions: [
-        PopupMenuButton<_ImportAction>(
-          tooltip: 'Import DICOM data',
-          enabled: !state.isImporting,
-          onSelected: (action) {
-            switch (action) {
-              case _ImportAction.files:
-                onImportFiles();
-              case _ImportAction.directory:
-                onImportDirectory();
-            }
-          },
-          itemBuilder: (context) => const [
-            PopupMenuItem(
-              value: _ImportAction.files,
-              child: ListTile(
-                leading: Icon(Icons.file_open),
-                title: Text('Import files'),
-                dense: true,
-              ),
-            ),
-            PopupMenuItem(
-              value: _ImportAction.directory,
-              child: ListTile(
-                leading: Icon(Icons.folder_open),
-                title: Text('Import folder'),
-                dense: true,
-              ),
-            ),
-          ],
-          child: AbsorbPointer(
-            child: FilledButton.icon(
-              onPressed: () {},
-              icon: state.isImporting
-                  ? const SizedBox.square(
-                      dimension: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.file_open, size: 18),
-              label: Text(state.isImporting ? 'Importing' : 'Import'),
+        if (state.isImporting) ...[
+          OutlinedButton.icon(
+            onPressed: onCancelImport,
+            icon: const Icon(Icons.cancel_outlined, size: 16),
+            label: const Text('Cancel'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red.shade300,
+              side: BorderSide(color: Colors.red.shade300),
             ),
           ),
-        ),
+          const SizedBox(width: 8),
+          FilledButton.icon(
+            onPressed: null,
+            icon: const SizedBox.square(
+              dimension: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            label: const Text('Importing'),
+          ),
+        ] else
+          PopupMenuButton<_ImportAction>(
+            tooltip: 'Import DICOM data',
+            onSelected: (action) {
+              switch (action) {
+                case _ImportAction.files:
+                  onImportFiles();
+                case _ImportAction.directory:
+                  onImportDirectory();
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _ImportAction.files,
+                child: ListTile(
+                  leading: Icon(Icons.file_open),
+                  title: Text('Import files'),
+                  dense: true,
+                ),
+              ),
+              PopupMenuItem(
+                value: _ImportAction.directory,
+                child: ListTile(
+                  leading: Icon(Icons.folder_open),
+                  title: Text('Import folder'),
+                  dense: true,
+                ),
+              ),
+            ],
+            child: AbsorbPointer(
+              child: FilledButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.file_open, size: 18),
+                label: const Text('Import'),
+              ),
+            ),
+          ),
         const SizedBox(width: 12),
         SegmentedButton<ViewportLayout>(
           segments: const [

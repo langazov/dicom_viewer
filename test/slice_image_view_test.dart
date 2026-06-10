@@ -291,12 +291,15 @@ void main() {
     expect(pan, Offset.zero);
   });
 
-  testWidgets('scroll zooms without selecting the zoom tool', (tester) async {
+  testWidgets('scroll navigates slices without selecting a specific tool', (
+    tester,
+  ) async {
     final buffer = SliceDisplayBuffer(
       width: 100,
       height: 100,
       rgba: Uint8List.fromList(List<int>.filled(100 * 100 * 4, 255)),
     );
+    int? sliceDelta;
     double? zoom;
 
     await tester.pumpWidget(
@@ -309,9 +312,8 @@ void main() {
             buffer: buffer,
             pixelAspectRatio: 1,
             fitMode: true,
-            onZoomChanged: (value) {
-              zoom = value;
-            },
+            onSliceScrolled: (delta) => sliceDelta = delta,
+            onZoomChanged: (value) => zoom = value,
           ),
         ),
       ),
@@ -321,18 +323,22 @@ void main() {
     });
     await tester.pump();
 
-    await tester.sendEventToBinding(
-      const PointerScrollEvent(
-        position: Offset(100, 100),
-        scrollDelta: Offset(0, -20),
-      ),
-    );
+    // Send 3× -20px to cross the 60px accumulator threshold.
+    for (var i = 0; i < 3; i++) {
+      await tester.sendEventToBinding(
+        const PointerScrollEvent(
+          position: Offset(100, 100),
+          scrollDelta: Offset(0, -20),
+        ),
+      );
+    }
     await tester.pump();
 
-    expect(zoom, closeTo(1.04, 0.01));
+    expect(sliceDelta, -1);
+    expect(zoom, isNull);
   });
 
-  testWidgets('scroll zooms even when window level drag is enabled', (
+  testWidgets('scroll navigates slices even when window level drag is enabled', (
     tester,
   ) async {
     final buffer = SliceDisplayBuffer(
@@ -340,7 +346,7 @@ void main() {
       height: 100,
       rgba: Uint8List.fromList(List<int>.filled(100 * 100 * 4, 255)),
     );
-    double? zoom;
+    int? sliceDelta;
     WindowLevelDragDelta? windowLevelDelta;
 
     await tester.pumpWidget(
@@ -353,9 +359,7 @@ void main() {
             buffer: buffer,
             pixelAspectRatio: 1,
             fitMode: true,
-            onZoomChanged: (value) {
-              zoom = value;
-            },
+            onSliceScrolled: (delta) => sliceDelta = delta,
             onWindowLevelDrag: (delta) {
               windowLevelDelta = delta;
             },
@@ -368,15 +372,17 @@ void main() {
     });
     await tester.pump();
 
-    await tester.sendEventToBinding(
-      const PointerScrollEvent(
-        position: Offset(100, 100),
-        scrollDelta: Offset(0, -20),
-      ),
-    );
+    for (var i = 0; i < 3; i++) {
+      await tester.sendEventToBinding(
+        const PointerScrollEvent(
+          position: Offset(100, 100),
+          scrollDelta: Offset(0, -20),
+        ),
+      );
+    }
     await tester.pump();
 
-    expect(zoom, closeTo(1.04, 0.01));
+    expect(sliceDelta, -1);
     expect(windowLevelDelta, isNull);
   });
 

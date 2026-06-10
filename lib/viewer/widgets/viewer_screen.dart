@@ -29,6 +29,7 @@ class ViewerScreen extends StatefulWidget {
 
 class _ViewerScreenState extends State<ViewerScreen> {
   ViewerState _state = const ViewerState();
+  bool _importCancelled = false;
 
   void _setLayout(ViewportLayout layout) {
     setState(() {
@@ -282,6 +283,16 @@ class _ViewerScreenState extends State<ViewerScreen> {
     });
   }
 
+  void _cancelImport() {
+    _importCancelled = true;
+    setState(() {
+      _state = _state.copyWith(
+        importStatus: ImportStatus.idle,
+        importMessage: 'Import cancelled.',
+      );
+    });
+  }
+
   Future<void> _importFiles() {
     return _runImport(widget.importAdapter.pickFiles);
   }
@@ -296,6 +307,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
     if (_state.isImporting) {
       return;
     }
+    _importCancelled = false;
 
     setState(() {
       _state = _state.copyWith(
@@ -345,7 +357,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
 
     try {
       final result = await widget.importRunner.importSources(selection.sources);
-      if (!mounted) {
+      if (!mounted || _importCancelled) {
         return;
       }
 
@@ -361,7 +373,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
         );
       });
     } on Object catch (error) {
-      if (!mounted) {
+      if (!mounted || _importCancelled) {
         return;
       }
 
@@ -383,6 +395,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
         onImportDirectory: _importDirectory,
         onLayoutChanged: _setLayout,
         onToolChanged: _setTool,
+        onCancelImport: _cancelImport,
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -473,7 +486,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
   }
 }
 
-class _DesktopWorkspace extends StatelessWidget {
+class _DesktopWorkspace extends StatefulWidget {
   const _DesktopWorkspace({
     required this.state,
     required this.onToolChanged,
@@ -527,79 +540,105 @@ class _DesktopWorkspace extends StatelessWidget {
   final VoidCallback onResetImageFilters;
 
   @override
+  State<_DesktopWorkspace> createState() => _DesktopWorkspaceState();
+}
+
+class _DesktopWorkspaceState extends State<_DesktopWorkspace> {
+  bool _leftVisible = true;
+  bool _rightVisible = true;
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         Expanded(
           child: Row(
             children: [
-              SizedBox(
-                width: 280,
-                child: SeriesBrowser(
-                  state: state,
-                  onSeriesSelected: onSeriesSelected,
-                  onSearchChanged: onSearchChanged,
-                  onTogglePatientName: onTogglePatientName,
-                ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: _leftVisible ? 280 : 0,
+                child: _leftVisible
+                    ? SeriesBrowser(
+                        state: widget.state,
+                        onSeriesSelected: widget.onSeriesSelected,
+                        onSearchChanged: widget.onSearchChanged,
+                        onTogglePatientName: widget.onTogglePatientName,
+                      )
+                    : const SizedBox.shrink(),
               ),
-              const VerticalDivider(width: 1),
+              _PanelToggleButton(
+                visible: _leftVisible,
+                side: _PanelSide.left,
+                onTap: () => setState(() => _leftVisible = !_leftVisible),
+              ),
               Expanded(
                 child: ViewportGrid(
-                  state: state,
-                  onSliceChanged: onSliceChanged,
-                  onViewportSelected: onViewportSelected,
-                  onZoomChanged: onZoomChanged,
-                  onPanChanged: onPanChanged,
-                  onInvertToggled: onInvertToggled,
-                  onResetViewport: onResetViewport,
-                  onFitViewport: onFitViewport,
-                  onWindowLevelChanged: onWindowLevelChanged,
+                  state: widget.state,
+                  onSliceChanged: widget.onSliceChanged,
+                  onViewportSelected: widget.onViewportSelected,
+                  onZoomChanged: widget.onZoomChanged,
+                  onPanChanged: widget.onPanChanged,
+                  onInvertToggled: widget.onInvertToggled,
+                  onResetViewport: widget.onResetViewport,
+                  onFitViewport: widget.onFitViewport,
+                  onWindowLevelChanged: widget.onWindowLevelChanged,
                 ),
               ),
-              const VerticalDivider(width: 1),
-              SizedBox(
-                width: 320,
-                child: Column(
-                  children: [
-                    SizedBox(
-                      height: 300,
-                      child: ToolPanel(
-                        state: state,
-                        onToolChanged: onToolChanged,
-                        onContrastChanged: onContrastChanged,
-                        onBrightnessChanged: onBrightnessChanged,
-                        onSmoothingChanged: onSmoothingChanged,
-                        onFilterModeChanged: onFilterModeChanged,
-                        onBilateralRadiusChanged: onBilateralRadiusChanged,
-                        onBilateralSigmaChanged: onBilateralSigmaChanged,
-                        onSharpenAmountChanged: onSharpenAmountChanged,
-                        onAnisotropicIterationsChanged:
-                            onAnisotropicIterationsChanged,
-                        onAnisotropicKappaChanged: onAnisotropicKappaChanged,
-                        onEdgeUpscaleStrengthChanged:
-                            onEdgeUpscaleStrengthChanged,
-                        onResetImageFilters: onResetImageFilters,
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    Expanded(child: MetadataPanel(state: state)),
-                  ],
-                ),
+              _PanelToggleButton(
+                visible: _rightVisible,
+                side: _PanelSide.right,
+                onTap: () => setState(() => _rightVisible = !_rightVisible),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: _rightVisible ? 320 : 0,
+                child: _rightVisible
+                    ? Column(
+                        children: [
+                          SizedBox(
+                            height: 300,
+                            child: ToolPanel(
+                              state: widget.state,
+                              onToolChanged: widget.onToolChanged,
+                              onContrastChanged: widget.onContrastChanged,
+                              onBrightnessChanged: widget.onBrightnessChanged,
+                              onSmoothingChanged: widget.onSmoothingChanged,
+                              onFilterModeChanged: widget.onFilterModeChanged,
+                              onBilateralRadiusChanged:
+                                  widget.onBilateralRadiusChanged,
+                              onBilateralSigmaChanged:
+                                  widget.onBilateralSigmaChanged,
+                              onSharpenAmountChanged:
+                                  widget.onSharpenAmountChanged,
+                              onAnisotropicIterationsChanged:
+                                  widget.onAnisotropicIterationsChanged,
+                              onAnisotropicKappaChanged:
+                                  widget.onAnisotropicKappaChanged,
+                              onEdgeUpscaleStrengthChanged:
+                                  widget.onEdgeUpscaleStrengthChanged,
+                              onResetImageFilters: widget.onResetImageFilters,
+                            ),
+                          ),
+                          const Divider(height: 1),
+                          Expanded(child: MetadataPanel(state: widget.state)),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
               ),
             ],
           ),
         ),
         StatusBar(
-          state: state,
-          onSliceChanged: onSliceChanged,
-          onViewportSelected: onViewportSelected,
+          state: widget.state,
+          onSliceChanged: widget.onSliceChanged,
+          onViewportSelected: widget.onViewportSelected,
         ),
       ],
     );
   }
 }
 
-class _TabletWorkspace extends StatelessWidget {
+class _TabletWorkspace extends StatefulWidget {
   const _TabletWorkspace({
     required this.state,
     required this.onToolChanged,
@@ -653,6 +692,13 @@ class _TabletWorkspace extends StatelessWidget {
   final VoidCallback onResetImageFilters;
 
   @override
+  State<_TabletWorkspace> createState() => _TabletWorkspaceState();
+}
+
+class _TabletWorkspaceState extends State<_TabletWorkspace> {
+  bool _rightVisible = true;
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       children: [
@@ -661,63 +707,108 @@ class _TabletWorkspace extends StatelessWidget {
             children: [
               Expanded(
                 child: ViewportGrid(
-                  state: state,
-                  onSliceChanged: onSliceChanged,
-                  onViewportSelected: onViewportSelected,
-                  onZoomChanged: onZoomChanged,
-                  onPanChanged: onPanChanged,
-                  onInvertToggled: onInvertToggled,
-                  onResetViewport: onResetViewport,
-                  onFitViewport: onFitViewport,
-                  onWindowLevelChanged: onWindowLevelChanged,
+                  state: widget.state,
+                  onSliceChanged: widget.onSliceChanged,
+                  onViewportSelected: widget.onViewportSelected,
+                  onZoomChanged: widget.onZoomChanged,
+                  onPanChanged: widget.onPanChanged,
+                  onInvertToggled: widget.onInvertToggled,
+                  onResetViewport: widget.onResetViewport,
+                  onFitViewport: widget.onFitViewport,
+                  onWindowLevelChanged: widget.onWindowLevelChanged,
                 ),
               ),
-              const VerticalDivider(width: 1),
-              SizedBox(
-                width: 280,
-                child: Column(
-                  children: [
-                    SizedBox(
-                      height: 200,
-                      child: ToolPanel(
-                        state: state,
-                        onToolChanged: onToolChanged,
-                        onContrastChanged: onContrastChanged,
-                        onBrightnessChanged: onBrightnessChanged,
-                        onSmoothingChanged: onSmoothingChanged,
-                        onFilterModeChanged: onFilterModeChanged,
-                        onBilateralRadiusChanged: onBilateralRadiusChanged,
-                        onBilateralSigmaChanged: onBilateralSigmaChanged,
-                        onSharpenAmountChanged: onSharpenAmountChanged,
-                        onAnisotropicIterationsChanged:
-                            onAnisotropicIterationsChanged,
-                        onAnisotropicKappaChanged: onAnisotropicKappaChanged,
-                        onEdgeUpscaleStrengthChanged:
-                            onEdgeUpscaleStrengthChanged,
-                        onResetImageFilters: onResetImageFilters,
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    Expanded(
-                      child: SeriesBrowser(
-                        state: state,
-                        onSeriesSelected: onSeriesSelected,
-                        onSearchChanged: onSearchChanged,
-                        onTogglePatientName: onTogglePatientName,
-                      ),
-                    ),
-                  ],
-                ),
+              _PanelToggleButton(
+                visible: _rightVisible,
+                side: _PanelSide.right,
+                onTap: () => setState(() => _rightVisible = !_rightVisible),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: _rightVisible ? 280 : 0,
+                child: _rightVisible
+                    ? Column(
+                        children: [
+                          SizedBox(
+                            height: 200,
+                            child: ToolPanel(
+                              state: widget.state,
+                              onToolChanged: widget.onToolChanged,
+                              onContrastChanged: widget.onContrastChanged,
+                              onBrightnessChanged: widget.onBrightnessChanged,
+                              onSmoothingChanged: widget.onSmoothingChanged,
+                              onFilterModeChanged: widget.onFilterModeChanged,
+                              onBilateralRadiusChanged:
+                                  widget.onBilateralRadiusChanged,
+                              onBilateralSigmaChanged:
+                                  widget.onBilateralSigmaChanged,
+                              onSharpenAmountChanged:
+                                  widget.onSharpenAmountChanged,
+                              onAnisotropicIterationsChanged:
+                                  widget.onAnisotropicIterationsChanged,
+                              onAnisotropicKappaChanged:
+                                  widget.onAnisotropicKappaChanged,
+                              onEdgeUpscaleStrengthChanged:
+                                  widget.onEdgeUpscaleStrengthChanged,
+                              onResetImageFilters: widget.onResetImageFilters,
+                            ),
+                          ),
+                          const Divider(height: 1),
+                          Expanded(
+                            child: SeriesBrowser(
+                              state: widget.state,
+                              onSeriesSelected: widget.onSeriesSelected,
+                              onSearchChanged: widget.onSearchChanged,
+                              onTogglePatientName: widget.onTogglePatientName,
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
               ),
             ],
           ),
         ),
         StatusBar(
-          state: state,
-          onSliceChanged: onSliceChanged,
-          onViewportSelected: onViewportSelected,
+          state: widget.state,
+          onSliceChanged: widget.onSliceChanged,
+          onViewportSelected: widget.onViewportSelected,
         ),
       ],
+    );
+  }
+}
+
+enum _PanelSide { left, right }
+
+class _PanelToggleButton extends StatelessWidget {
+  const _PanelToggleButton({
+    required this.visible,
+    required this.side,
+    required this.onTap,
+  });
+
+  final bool visible;
+  final _PanelSide side;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = switch ((side, visible)) {
+      (_PanelSide.left, true) => Icons.chevron_left,
+      (_PanelSide.left, false) => Icons.chevron_right,
+      (_PanelSide.right, true) => Icons.chevron_right,
+      (_PanelSide.right, false) => Icons.chevron_left,
+    };
+    return SizedBox(
+      width: 16,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          color: const Color(0xFF1A2227),
+          child: Icon(icon, size: 14, color: const Color(0xFF6E858E)),
+        ),
+      ),
     );
   }
 }
