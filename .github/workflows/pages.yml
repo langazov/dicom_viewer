@@ -29,37 +29,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir _site
+
           sed "s|__GITHUB_REPOSITORY__|${{ github.repository }}|g" \
             .github/pages/index.html > _site/index.html
 
-          # Fetch latest release and bake into the page so it works for private repos
           gh api repos/${{ github.repository }}/releases/latest \
             2>/dev/null > /tmp/release.json || echo 'null' > /tmp/release.json
 
-          python3 - << 'PYEOF'
-import json, sys
-
-with open('/tmp/release.json') as f:
-    raw = f.read().strip()
-
-try:
-    release = json.loads(raw)
-    if not isinstance(release, dict) or 'tag_name' not in release:
-        raise ValueError('no release')
-    baked = f'const BAKED_RELEASE = {json.dumps(release)};'
-except Exception:
-    baked = ''   # no release yet — JS falls back gracefully
-
-with open('_site/index.html') as f:
-    html = f.read()
-
-html = html.replace('/* __BAKED_RELEASE__ */', baked)
-
-with open('_site/index.html', 'w') as f:
-    f.write(html)
-
-print('Baked release:', release.get('tag_name') if baked else 'none')
-PYEOF
+          python3 .github/scripts/inject_release.py
 
       - uses: actions/configure-pages@v5
 
