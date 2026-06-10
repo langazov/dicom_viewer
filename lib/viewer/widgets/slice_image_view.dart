@@ -106,16 +106,13 @@ class _SliceImageViewState extends State<SliceImageView> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final effectiveZoom = widget.fitMode ? 1.0 : widget.zoom;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final viewportSize = Size(constraints.maxWidth, constraints.maxHeight);
         final fitScale = _fitScale(viewportSize);
-        final effectiveZoom = widget.fitMode
-            ? fitScale
-            : widget.zoom * fitScale;
-        final aspectRatio =
-            (widget.buffer.width * widget.pixelAspectRatio) /
-            widget.buffer.height;
+        final displayedScale = effectiveZoom * fitScale;
 
         return Stack(
           fit: StackFit.expand,
@@ -150,23 +147,16 @@ class _SliceImageViewState extends State<SliceImageView> {
                       widget.onZoomChanged?.call(_clampZoom(details.scale));
                     } else {
                       widget.onZoomChanged?.call(
-                        _clampZoom(widget.zoom * details.scale / fitScale),
+                        _clampZoom(widget.zoom * details.scale),
                       );
                     }
-                    widget.onPanChanged?.call(
-                      Offset(
-                        widget.panX + details.focalPointDelta.dx,
-                        widget.panY + details.focalPointDelta.dy,
-                      ),
-                    );
-                  } else {
-                    widget.onPanChanged?.call(
-                      Offset(
-                        widget.panX + details.focalPointDelta.dx,
-                        widget.panY + details.focalPointDelta.dy,
-                      ),
-                    );
                   }
+                  widget.onPanChanged?.call(
+                    Offset(
+                      widget.panX + details.focalPointDelta.dx,
+                      widget.panY + details.focalPointDelta.dy,
+                    ),
+                  );
                 },
                 onDoubleTap: () {
                   if (widget.fitMode) {
@@ -175,18 +165,22 @@ class _SliceImageViewState extends State<SliceImageView> {
                     widget.onFitRequested?.call();
                   }
                 },
-                child: Center(
-                  child: AspectRatio(
-                    aspectRatio: aspectRatio,
-                    child: Transform(
-                      alignment: Alignment.center,
-                      transform: Matrix4.identity()
-                        ..translateByDouble(widget.panX, widget.panY, 0, 1)
-                        ..scaleByDouble(effectiveZoom, effectiveZoom, 1, 1),
-                      child: RawImage(
-                        image: image,
-                        fit: BoxFit.fill,
-                        filterQuality: FilterQuality.none,
+                child: ClipRect(
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: SizedBox(
+                      width: widget.buffer.width * widget.pixelAspectRatio,
+                      height: widget.buffer.height.toDouble(),
+                      child: Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.identity()
+                          ..translateByDouble(widget.panX, widget.panY, 0, 1)
+                          ..scaleByDouble(effectiveZoom, effectiveZoom, 1, 1),
+                        child: RawImage(
+                          image: image,
+                          fit: BoxFit.fill,
+                          filterQuality: FilterQuality.none,
+                        ),
                       ),
                     ),
                   ),
@@ -211,7 +205,7 @@ class _SliceImageViewState extends State<SliceImageView> {
                 bottom: 8,
                 child: _ScaleBar(
                   mm: widget.scaleBarMm!,
-                  scale: effectiveZoom * widget.pixelAspectRatio,
+                  scale: displayedScale * widget.pixelAspectRatio,
                 ),
               ),
             if (widget.sliceLabel != null)
@@ -229,7 +223,10 @@ class _SliceImageViewState extends State<SliceImageView> {
   double _fitScale(Size viewportSize) {
     final imageWidth = widget.buffer.width * widget.pixelAspectRatio;
     final imageHeight = widget.buffer.height.toDouble();
-    if (imageWidth == 0 || imageHeight == 0) {
+    if (imageWidth == 0 ||
+        imageHeight == 0 ||
+        viewportSize.width == 0 ||
+        viewportSize.height == 0) {
       return 1;
     }
     final widthScale = viewportSize.width / imageWidth;
@@ -288,11 +285,11 @@ class _ScaleBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final widthPx = math.max(20, mm * 20 / scale).clamp(20, 240).toDouble();
+    final widthPx = (mm * scale).clamp(20.0, 240.0);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0x88000000),
+        color: const Color(0xAA000000),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(

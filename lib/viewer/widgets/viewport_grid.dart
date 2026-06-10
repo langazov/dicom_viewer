@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:dicom_viewer/dicom/domain/dicom_models.dart';
 import 'package:dicom_viewer/dicom/pixel/pixel_decode_service.dart';
 import 'package:dicom_viewer/dicom/pixel/pixel_decode_service_locator.dart';
+import 'package:dicom_viewer/viewer/rendering/mpr_sampler.dart';
 import 'package:dicom_viewer/viewer/rendering/slice_display_mapper.dart';
 import 'package:dicom_viewer/viewer/rendering/voxel_volume.dart';
 import 'package:dicom_viewer/viewer/rendering/window_level.dart';
@@ -83,13 +84,13 @@ class ViewportGrid extends StatelessWidget {
       ),
       ActiveViewport.sagittal => _MprPlaneContent(
         state: state,
-        planeLabel: 'Sagittal',
-        showWhenMissing: 'Volume not built for sagittal view',
+        plane: MprPlane.sagittal,
+        showWhenMissing: 'Select a series to view the sagittal plane',
       ),
       ActiveViewport.coronal => _MprPlaneContent(
         state: state,
-        planeLabel: 'Coronal',
-        showWhenMissing: 'Volume not built for coronal view',
+        plane: MprPlane.coronal,
+        showWhenMissing: 'Select a series to view the coronal plane',
       ),
       ActiveViewport.volume3d => _VolumeContent(state: state),
     };
@@ -325,11 +326,7 @@ class _AxialSliceContent extends StatelessWidget {
                     );
                   }
                 : null,
-            scaleBarMm: instance.metadata.pixelSpacing?.rowMm != null
-                ? 50 *
-                      instance.metadata.pixelSpacing!.rowMm *
-                      instance.metadata.rows
-                : null,
+            scaleBarMm: _scaleBarMm(instance.metadata),
             sliceLabel: state.selectedSeriesInstanceCount == 0
                 ? null
                 : 'Slice ${state.sliceIndex + 1}/${state.selectedSeriesInstanceCount}',
@@ -348,6 +345,19 @@ class _AxialSliceContent extends StatelessWidget {
     }
 
     return spacing.columnMm / spacing.rowMm;
+  }
+
+  double? _scaleBarMm(DicomMetadata metadata) {
+    final spacing = metadata.pixelSpacing;
+    if (spacing == null || spacing.rowMm == 0) {
+      return null;
+    }
+    final extentMm =
+        (metadata.columns * spacing.columnMm + metadata.rows * spacing.rowMm) /
+        2;
+    if (extentMm >= 200) return 50;
+    if (extentMm >= 50) return 10;
+    return 5;
   }
 }
 
@@ -407,12 +417,12 @@ class _VolumeContent extends StatelessWidget {
 class _MprPlaneContent extends StatefulWidget {
   const _MprPlaneContent({
     required this.state,
-    required this.planeLabel,
+    required this.plane,
     required this.showWhenMissing,
   });
 
   final ViewerState state;
-  final String planeLabel;
+  final MprPlane plane;
   final String showWhenMissing;
 
   @override
@@ -430,14 +440,24 @@ class _MprPlaneContentState extends State<_MprPlaneContent> {
     _rebuildIfNeeded();
   }
 
+  @override
+  void didUpdateWidget(covariant _MprPlaneContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state.selectedSeriesId != widget.state.selectedSeriesId) {
+      _rebuildIfNeeded();
+    }
+  }
+
   void _rebuildIfNeeded() {
     final series = widget.state.selectedSeries;
     if (series == null) {
-      setState(() {
-        _volume = null;
-        _lastSeriesId = null;
-        _error = null;
-      });
+      if (_lastSeriesId != null) {
+        setState(() {
+          _volume = null;
+          _lastSeriesId = null;
+          _error = null;
+        });
+      }
       return;
     }
     if (_lastSeriesId == series.instanceUid) {
@@ -459,6 +479,19 @@ class _MprPlaneContentState extends State<_MprPlaneContent> {
     }
   }
 
+  int _defaultNormalIndex() {
+    final volume = _volume;
+    if (volume == null) return 0;
+    switch (widget.plane) {
+      case MprPlane.axial:
+        return volume.depth ~/ 2;
+      case MprPlane.sagittal:
+        return volume.width ~/ 2;
+      case MprPlane.coronal:
+        return volume.height ~/ 2;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final series = widget.state.selectedSeries;
@@ -474,6 +507,8 @@ class _MprPlaneContentState extends State<_MprPlaneContent> {
     }
     return MprView(
       volume: volume,
+      plane: widget.plane,
+      normalIndex: _defaultNormalIndex(),
       windowCenter: widget.state.windowCenter,
       windowWidth: widget.state.windowWidth,
       invert: widget.state.invert,

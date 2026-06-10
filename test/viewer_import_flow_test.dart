@@ -38,7 +38,7 @@ void main() {
     });
     await tester.pump();
 
-    expect(find.byType(RawImage), findsNWidgets(2));
+    expect(find.byType(RawImage), findsNWidgets(4));
     expect(find.textContaining('Slice 1/2 | W'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Next slice'));

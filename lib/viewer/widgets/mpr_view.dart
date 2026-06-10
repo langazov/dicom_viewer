@@ -1,26 +1,31 @@
-import 'dart:typed_data';
-
 import 'package:dicom_viewer/dicom/pixel/decoded_slice.dart';
 import 'package:dicom_viewer/viewer/rendering/mpr_sampler.dart';
 import 'package:dicom_viewer/viewer/rendering/slice_display_mapper.dart';
 import 'package:dicom_viewer/viewer/rendering/voxel_volume.dart';
 import 'package:dicom_viewer/viewer/rendering/window_level.dart';
 import 'package:dicom_viewer/viewer/widgets/slice_image_view.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 class MprView extends StatefulWidget {
   const MprView({
     super.key,
     required this.volume,
+    required this.plane,
+    required this.normalIndex,
     this.windowCenter = 0,
     this.windowWidth = 1,
     this.invert = false,
+    this.onSliceIndexChanged,
   });
 
   final VoxelVolume volume;
+  final MprPlane plane;
+  final int normalIndex;
   final double windowCenter;
   final double windowWidth;
   final bool invert;
+  final ValueChanged<int>? onSliceIndexChanged;
 
   @override
   State<MprView> createState() => _MprViewState();
@@ -30,17 +35,16 @@ class _MprViewState extends State<MprView> {
   static const _sampler = MprSampler();
   static const _mapper = SliceDisplayMapper();
 
-  late int _axialIndex;
-  late int _sagittalIndex;
-  late int _coronalIndex;
+  late int _normalIndex;
   late WindowLevel _windowLevel;
 
   @override
   void initState() {
     super.initState();
-    _axialIndex = widget.volume.depth ~/ 2;
-    _sagittalIndex = widget.volume.width ~/ 2;
-    _coronalIndex = widget.volume.height ~/ 2;
+    _normalIndex = widget.normalIndex.clamp(
+      0,
+      _maxNormal(widget.volume, widget.plane) - 1,
+    );
     _windowLevel = WindowLevel(
       center: widget.windowCenter,
       width: widget.windowWidth,
@@ -50,6 +54,13 @@ class _MprViewState extends State<MprView> {
   @override
   void didUpdateWidget(covariant MprView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.plane != widget.plane ||
+        oldWidget.normalIndex != widget.normalIndex) {
+      _normalIndex = widget.normalIndex.clamp(
+        0,
+        _maxNormal(widget.volume, widget.plane) - 1,
+      );
+    }
     if (oldWidget.windowCenter != widget.windowCenter ||
         oldWidget.windowWidth != widget.windowWidth) {
       _windowLevel = WindowLevel(
@@ -59,160 +70,79 @@ class _MprViewState extends State<MprView> {
     }
   }
 
-  void _setAxial(int v) {
-    setState(() {
-      _axialIndex = v.clamp(0, widget.volume.depth - 1);
-    });
-  }
-
-  void _setSagittal(int v) {
-    setState(() {
-      _sagittalIndex = v.clamp(0, widget.volume.width - 1);
-    });
-  }
-
-  void _setCoronal(int v) {
-    setState(() {
-      _coronalIndex = v.clamp(0, widget.volume.height - 1);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final axial = _sampler.sample(widget.volume, MprPlane.axial, _axialIndex);
-    final sagittal = _sampler.sample(
-      widget.volume,
-      MprPlane.sagittal,
-      _sagittalIndex,
+    final slice = _sampler.sample(widget.volume, widget.plane, _normalIndex);
+    final buffer = _mapper.mapToRgba(
+      slice: _toDecodedSlice(slice),
+      windowLevel: _windowLevel,
+      invert: widget.invert,
     );
-    final coronal = _sampler.sample(
-      widget.volume,
-      MprPlane.coronal,
-      _coronalIndex,
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          child: _MprPlaneView(
-            title: 'Axial',
-            slice: axial,
-            windowLevel: _windowLevel,
-            invert: widget.invert,
-            mapper: _mapper,
-            onSliceIndexChanged: _setAxial,
-          ),
-        ),
-        Expanded(
-          child: _MprPlaneView(
-            title: 'Sagittal',
-            slice: sagittal,
-            windowLevel: _windowLevel,
-            invert: widget.invert,
-            mapper: _mapper,
-            onSliceIndexChanged: _setSagittal,
-          ),
-        ),
-        Expanded(
-          child: _MprPlaneView(
-            title: 'Coronal',
-            slice: coronal,
-            windowLevel: _windowLevel,
-            invert: widget.invert,
-            mapper: _mapper,
-            onSliceIndexChanged: _setCoronal,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MprPlaneView extends StatelessWidget {
-  const _MprPlaneView({
-    required this.title,
-    required this.slice,
-    required this.windowLevel,
-    required this.invert,
-    required this.mapper,
-    required this.onSliceIndexChanged,
-  });
-
-  final String title;
-  final MprSlice slice;
-  final WindowLevel windowLevel;
-  final bool invert;
-  final SliceDisplayMapper mapper;
-  final ValueChanged<int> onSliceIndexChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final buffer = mapper.mapToRgba(
-      slice: _toDecodedSlice(slice).toDecodedSlice(),
-      windowLevel: windowLevel,
-      invert: invert,
-    );
-    return Padding(
-      padding: const EdgeInsets.all(4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(height: 4),
-          Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onVerticalDragUpdate: (details) {
-                final delta = details.primaryDelta ?? 0;
-                onSliceIndexChanged(slice.normalIndex - delta.round());
-              },
-              child: SliceImageView(
-                buffer: buffer,
-                pixelAspectRatio: slice.spacingY == 0
-                    ? 1
-                    : slice.spacingX / slice.spacingY,
-                sliceLabel: '$title ${slice.normalIndex + 1}',
-              ),
-            ),
-          ),
-        ],
+    return Listener(
+      onPointerSignal: (event) {
+        if (event is PointerScrollEvent) {
+          final direction = event.scrollDelta.dy > 0 ? 1 : -1;
+          final next = (_normalIndex + direction).clamp(
+            0,
+            _maxNormal(widget.volume, widget.plane) - 1,
+          );
+          if (next != _normalIndex) {
+            setState(() {
+              _normalIndex = next;
+            });
+            widget.onSliceIndexChanged?.call(next);
+          }
+        }
+      },
+      child: SliceImageView(
+        buffer: buffer,
+        pixelAspectRatio: slice.spacingY == 0
+            ? 1
+            : slice.spacingX / slice.spacingY,
+        sliceLabel: '${_planeLabel(widget.plane)} ${_normalIndex + 1}',
+        scaleBarMm:
+            slice.spacingX *
+            (widget.plane == MprPlane.axial
+                ? widget.volume.width
+                : widget.plane == MprPlane.sagittal
+                ? widget.volume.depth
+                : widget.volume.width),
       ),
     );
   }
 
-  _DecodedSliceForMpr _toDecodedSlice(MprSlice slice) {
-    return _DecodedSliceForMpr(
-      width: slice.width,
-      height: slice.height,
-      values: slice.values,
-    );
+  static int _maxNormal(VoxelVolume v, MprPlane plane) {
+    switch (plane) {
+      case MprPlane.axial:
+      case MprPlane.coronal:
+        return v.depth;
+      case MprPlane.sagittal:
+        return v.width;
+    }
   }
-}
 
-class _DecodedSliceForMpr {
-  const _DecodedSliceForMpr({
-    required this.width,
-    required this.height,
-    required this.values,
-  });
-  final int width;
-  final int height;
-  final Float32List values;
+  static String _planeLabel(MprPlane plane) {
+    return switch (plane) {
+      MprPlane.axial => 'Axial',
+      MprPlane.sagittal => 'Sagittal',
+      MprPlane.coronal => 'Coronal',
+    };
+  }
 
-  DecodedSlice toDecodedSlice() {
+  DecodedSlice _toDecodedSlice(MprSlice slice) {
     var min = double.infinity;
     var max = double.negativeInfinity;
-    for (var i = 0; i < values.length; i += 1) {
-      final v = values[i];
+    for (var i = 0; i < slice.values.length; i += 1) {
+      final v = slice.values[i];
       if (v < min) min = v;
       if (v > max) max = v;
     }
     if (!min.isFinite) min = 0;
     if (!max.isFinite) max = 0;
     return DecodedSlice(
-      width: width,
-      height: height,
-      values: values,
+      width: slice.width,
+      height: slice.height,
+      values: slice.values,
       minValue: min,
       maxValue: max,
     );
