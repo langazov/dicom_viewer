@@ -1,0 +1,24 @@
+# Appfile — DICOM Viewer (iOS + macOS + Android)
+# https://docs.fastlane.tools/advanced/Appfile/
+
+# ── iOS ──────────────────────────────────────────────────────────────────────
+for_platform :ios do
+  app_identifier(ENV["IOS_BUNDLE_ID"] || "eu.imsc.dicomviewer")
+  apple_id(ENV["APPLE_ID"] || "langazov@gmail.com")
+  team_id(ENV["APPLE_TEAM_ID"] || "844T7SAJPK")
+  itc_team_id(ENV["ITC_TEAM_ID"] || ENV["APPLE_TEAM_ID"] || "844T7SAJPK")
+end
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+for_platform :mac do
+  app_identifier(ENV["MAC_BUNDLE_ID"] || ENV["IOS_BUNDLE_ID"] || "eu.imsc.dicomviewer")
+  apple_id(ENV["APPLE_ID"] || "langazov@gmail.com")
+  team_id(ENV["APPLE_TEAM_ID"] || "844T7SAJPK")
+  itc_team_id(ENV["ITC_TEAM_ID"] || ENV["APPLE_TEAM_ID"] || "844T7SAJPK")
+end
+
+# ── Android ───────────────────────────────────────────────────────────────────
+for_platform :android do
+  package_name(ENV["ANDROID_PACKAGE_NAME"] || "eu.imsc.dicomviewer")
+  json_key_file(ENV["GOOGLE_PLAY_JSON_KEY_PATH"] || "fastlane/google-play-key.json")
+end

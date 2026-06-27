@@ -1,0 +1,112 @@
+name: Deploy to App Store
+
+# Builds and ships the iOS and macOS apps via fastlane (TestFlight beta or
+# App Store / Mac App Store review). Signing assets come from the fastlane match
+# repo at github.com/langazov/AppleCerts. See fastlane/.env.example for the env
+# vars consumed by the Fastfile (Appfile/Matchfile/Fastfile).
+#
+# Required repository secrets:
+#   APPLE_TEAM_ID              Apple Developer Team ID
+#   ASC_ISSUER_ID              App Store Connect API issuer ID
+#   ASC_KEY_ID                 App Store Connect API key ID
+#   APPLE_AUTHKEY              .p8 contents (base64 PEM or raw PEM with literal \n)
+#   MATCH_PASSWORD             passphrase that decrypts the langazov/AppleCerts repo
+#   APPLECERTS_DEPLOY_TOKEN    GitHub PAT with read access to langazov/AppleCerts
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: 'Fastlane lane to run'
+        required: true
+        default: 'beta'
+        type: choice
+        options: ['beta', 'release']
+      platforms:
+        description: 'Space-separated platforms (ios mac)'
+        required: true
+        default: 'ios mac'
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.41.9'
+
+jobs:
+  deploy:
+    name: ${{ matrix.platform }} ${{ github.event.inputs.lane || 'beta' }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ios
+          - platform: mac
+    # On manual dispatch, honor the chosen platforms; on tag pushes run both.
+    if: ${{ github.event_name != 'workflow_dispatch' || contains(github.event.inputs.platforms, matrix.platform) }}
+
+    concurrency:
+      group: appstore-${{ matrix.platform }}-${{ github.ref }}
+      cancel-in-progress: false
+
+    env:
+      IOS_BUNDLE_ID: eu.imsc.dicomviewer
+      MAC_BUNDLE_ID: eu.imsc.dicomviewer
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      APPLE_AUTHKEY: ${{ secrets.APPLE_AUTHKEY }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      MATCH_GIT_URL: https://github.com/langazov/AppleCerts.git
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "$(find /Applications -maxdepth 1 -name 'Xcode*.app' | sort -V | tail -n1)/Contents/Developer"
+          xcrun xcodebuild -version
+
+      - name: Resolve match git authorization
+        run: |
+          TOKEN="${{ secrets.APPLECERTS_DEPLOY_TOKEN }}"
+          if [ -z "$TOKEN" ]; then
+            echo "APPLECERTS_DEPLOY_TOKEN secret is not set" >&2
+            exit 1
+          fi
+          BASIC="$(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')"
+          echo "MATCH_GIT_BASIC_AUTHORIZATION=$BASIC" >> "$GITHUB_ENV"
+
+      - name: Run fastlane
+        env:
+          LANE: ${{ github.event.inputs.lane || 'beta' }}
+        run: bundle exec fastlane ${{ matrix.platform }} "$LANE"
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastlane-${{ matrix.platform }}
+          path: |
+            build/ios/output
+            build/macos/output
+          if-no-files-found: ignore

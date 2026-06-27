@@ -44,6 +44,67 @@ PATH=/opt/homebrew/bin:$PATH flutter run -d macos
 - Web builds support browser file picker based multi-file import. Recursive folder import is limited by browser capabilities; use multi-file selection when folder access is unavailable.
 - Import parsing runs outside the UI flow and reports imported instances, skipped files, and platform access limitations in the viewer.
 
+## App Store deployment
+
+iOS (App Store) and macOS (Mac App Store) builds are driven by
+[fastlane](https://docs.fastlane.tools), mirroring the meal-plan project's setup.
+Configuration lives in `Gemfile` (pins fastlane 2.232.2 + CocoaPods) and
+`fastlane/` (`Fastfile`, `Appfile`, `Matchfile`, `Pluginfile`, `.env.example`).
+
+Signing assets (distribution certificates + provisioning profiles) are pulled
+from the fastlane match repository at `github.com/langazov/AppleCerts`, decrypted
+with `MATCH_PASSWORD`, and installed by `fastlane match`. Both platforms sign
+under the bundle identifier `eu.imsc.dicomviewer`.
+
+### Lanes
+
+Run locally from the project root (after `bundle install`):
+
+```sh
+bundle exec fastlane ios beta      # iOS    → TestFlight
+bundle exec fastlane mac beta      # macOS  → TestFlight
+bundle exec fastlane ios release   # iOS    → App Store review
+bundle exec fastlane mac release   # macOS  → Mac App Store review
+bundle exec fastlane android beta  # Android → Play internal
+```
+
+iOS produces a signed `.ipa` in `build/ios/output`; macOS produces a signed
+`.pkg` in `build/macos/output`. The `beta`/`release` lanes auto-bump the
+`pubspec.yaml` build number from the latest TestFlight/Play build before
+uploading.
+
+### CI
+
+The `Deploy to App Store` workflow (`.github/workflows/appstore.yml`) runs the
+lanes on a macOS runner. It triggers on `v*` tags (both iOS and macOS beta) or
+manually via `workflow_dispatch`, where you choose the lane (`beta`/`release`)
+and platforms (`ios`, `mac`, or both).
+
+### Required environment / secrets
+
+Copy `fastlane/.env.example` to `fastlane/.env` for local runs (the `.env` file
+is gitignored). For CI, set these repository secrets:
+
+| Secret | Value |
+|---|---|
+| `APPLE_TEAM_ID` | Apple Developer Team ID |
+| `ASC_ISSUER_ID` | App Store Connect API issuer ID |
+| `ASC_KEY_ID` | App Store Connect API key ID |
+| `APPLE_AUTHKEY` | `.p8` contents — base64 PEM (recommended) or raw PEM with literal `\n` |
+| `MATCH_PASSWORD` | passphrase that decrypts the langazov/AppleCerts match repo |
+| `APPLECERTS_DEPLOY_TOKEN` | GitHub PAT with **read** access to langazov/AppleCerts |
+
+The App Store Connect API key needs at minimum the **App Manager** role (and
+profile-creation rights) so fastlane can upload builds and let match generate the
+`eu.imsc.dicomviewer` App Store provisioning profile on first run.
+
+> Note: the match repo currently contains a profile only for `eu.imsc.mealplan`.
+> The distribution certificate is shared and reusable, but on the first run for
+> each platform match will create a new App Store profile for
+> `eu.imsc.dicomviewer` (run locally with `bundle exec fastlane ios
+> sync_certificates` / `mac sync_certificates`, or let CI generate it). The
+> bundle id must be registered (or registrable) in the Apple Developer portal.
+
 ## Development plan
 
 ### 1. Core application

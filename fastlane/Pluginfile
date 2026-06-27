@@ -1,0 +1,6 @@
+# Pluginfile — fastlane plugins
+# Install: bundle exec fastlane install_plugins
+
+# No custom plugins required yet.
+# Add plugins here as needed, e.g.:
+#   gem 'fastlane-plugin-firebase_app_distribution'

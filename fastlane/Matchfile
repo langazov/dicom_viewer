@@ -1,0 +1,19 @@
+# Matchfile — Apple code signing via fastlane Match
+# https://docs.fastlane.tools/actions/match/
+# Run: bundle exec fastlane ios sync_certificates
+#       bundle exec fastlane mac sync_certificates
+
+# Git repo that stores encrypted certificates & provisioning profiles.
+# On CI, set MATCH_GIT_URL + MATCH_GIT_BASIC_AUTHORIZATION (or a token URL).
+git_url(ENV["MATCH_GIT_URL"] || "https://github.com/langazov/AppleCerts.git")
+storage_mode("git")
+shallow_clone(true)
+
+type("appstore")
+
+app_identifier(ENV["IOS_BUNDLE_ID"] || "eu.imsc.dicomviewer")
+team_id(ENV["APPLE_TEAM_ID"] || "844T7SAJPK")
+username(ENV["APPLE_ID"] || "langazov@gmail.com")
+
+# Never auto-create certificates in CI — only read what exists.
+readonly(true) if ENV["CI"]

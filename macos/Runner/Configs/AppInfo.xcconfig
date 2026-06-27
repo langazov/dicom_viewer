@@ -8,7 +8,7 @@
 PRODUCT_NAME = dicom_viewer
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.dicomViewer
+PRODUCT_BUNDLE_IDENTIFIER = eu.imsc.dicomviewer
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.example. All rights reserved.
