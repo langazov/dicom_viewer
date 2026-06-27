@@ -40,6 +40,7 @@ jobs:
   deploy-ios:
     name: ios ${{ github.event.inputs.lane || 'beta' }}
     runs-on: macos-latest
+    timeout-minutes: 15
     if: ${{ github.event_name != 'workflow_dispatch' || contains(github.event.inputs.platforms, 'ios') }}
     concurrency:
       group: appstore-ios-${{ github.ref }}
@@ -97,6 +98,7 @@ jobs:
   deploy-mac:
     name: mac ${{ github.event.inputs.lane || 'beta' }}
     runs-on: macos-latest
+    timeout-minutes: 45
     if: ${{ github.event_name != 'workflow_dispatch' || contains(github.event.inputs.platforms, 'mac') }}
     concurrency:
       group: appstore-mac-${{ github.ref }}

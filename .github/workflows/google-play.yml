@@ -36,6 +36,7 @@ jobs:
   deploy-android:
     name: android ${{ github.event.inputs.lane || 'beta' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       ANDROID_PACKAGE_NAME: eu.imsc.dicomviewer
       GOOGLE_PLAY_JSON_KEY_PATH: fastlane/google-play-key.json
