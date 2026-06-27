@@ -208,6 +208,7 @@ platform :ios do
       include_symbols: true,
       include_bitcode: false,
       codesigning_identity: "Apple Distribution",
+      export_team_id: team,
       xcargs: "CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=#{team} 'PROVISIONING_PROFILE_SPECIFIER=match AppStore #{app_id}'"
     )
   end
@@ -295,6 +296,11 @@ platform :mac do
       scheme: "Runner",
       export_method: "app-store",
       output_directory: "build/macos/output",
+      # gym omits teamID from the export-options plist unless told the team, and
+      # the macOS archive's ApplicationProperties has no Team — so exportArchive
+      # fails with "No Team Found in Archive". export_team_id writes teamID into
+      # the plist and fixes it.
+      export_team_id: team,
       xcargs: "CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=#{team} 'PROVISIONING_PROFILE_SPECIFIER=match AppStore #{app_id}'"
     )
 
