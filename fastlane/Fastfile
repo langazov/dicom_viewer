@@ -62,6 +62,30 @@ def build_number
   pubspec_version[2].to_i
 end
 
+# Apple Developer Team ID. Falls back to the known team when the env var is
+# unset OR empty. GitHub injects "" for an absent secret, and Ruby treats ""
+# as truthy, so a plain `ENV[...] || default` would leak an empty
+# DEVELOPMENT_TEAM and break signing with "No Team Found in Archive" (export)
+# / "requires a development team" (archive).
+def apple_team_id
+  value = ENV["APPLE_TEAM_ID"].to_s.strip
+  value.empty? ? "844T7SAJPK" : value
+end
+
+# Keychain options for match on CI so the imported signing identity lands in the
+# dedicated, unlocked keychain (created by setup_ci_keychain with a real
+# password) rather than login.keychain. Passing the password explicitly lets
+# match's `security set-key-partition-list` succeed; otherwise codesign blocks
+# on a keychain-authorization prompt during the build_app/build_mac_app
+# "Run Script" phase and the job hangs until the job timeout.
+def match_keychain_params
+  return {} unless ENV["MATCH_KEYCHAIN_NAME"] && ENV["MATCH_KEYCHAIN_PASSWORD"]
+  {
+    keychain_name: ENV["MATCH_KEYCHAIN_NAME"],
+    keychain_password: ENV["MATCH_KEYCHAIN_PASSWORD"]
+  }
+end
+
 # Bump the build number in pubspec.yaml and return the new value.
 def bump_pubspec_build(new_build)
   path = File.join(__dir__, "..", "pubspec.yaml")
@@ -160,6 +184,7 @@ platform :ios do
       api_key: asc_api_key
     }
     match_params[:git_basic_authorization] = ENV["MATCH_GIT_BASIC_AUTHORIZATION"] if ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
+    match_params.merge!(match_keychain_params)
     match(match_params)
   end
 
@@ -173,7 +198,7 @@ platform :ios do
     sh("flutter build ios --release --no-codesign", chdir: "..")
 
     app_id = ENV["IOS_BUNDLE_ID"] || "eu.imsc.dicomviewer"
-    team = ENV["APPLE_TEAM_ID"] || "844T7SAJPK"
+    team = apple_team_id
     build_app(
       workspace: "ios/Runner.xcworkspace",
       scheme: "Runner",
@@ -248,6 +273,7 @@ platform :mac do
       api_key: asc_api_key
     }
     match_params[:git_basic_authorization] = ENV["MATCH_GIT_BASIC_AUTHORIZATION"] if ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
+    match_params.merge!(match_keychain_params)
     match(match_params)
   end
 
@@ -261,7 +287,7 @@ platform :mac do
     sh("flutter build macos --release", chdir: "..")
 
     app_id = ENV["MAC_BUNDLE_ID"] || ENV["IOS_BUNDLE_ID"] || "eu.imsc.dicomviewer"
-    team = ENV["APPLE_TEAM_ID"] || "844T7SAJPK"
+    team = apple_team_id
 
     # Archive + export a Mac App Store installer package (.pkg).
     build_mac_app(
