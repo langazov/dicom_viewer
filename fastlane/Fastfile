@@ -74,12 +74,36 @@ def bump_pubspec_build(new_build)
   new_build
 end
 
+# Set up a dedicated, unlocked keychain on CI with a NON-empty password.
+# setup_circle_ci creates the keychain with an empty password, which makes
+# `security set-key-partition-list -k ""` silently fail on GitHub-hosted
+# runners — codesign then hangs waiting for keychain authorization during the
+# Flutter "Run Script" phase of build_app/build_mac_app. Using a real password
+# lets match's partition-list call succeed and grants codesign access.
+def setup_ci_keychain
+  return unless RUBY_PLATFORM.include?("darwin")
+  require "securerandom"
+  require "shellwords"
+
+  name = ENV.fetch("MATCH_KEYCHAIN_NAME", "fastlane_ci.keychain")
+  pwd = SecureRandom.hex(12)
+  ENV["MATCH_KEYCHAIN_NAME"] = name
+  ENV["MATCH_KEYCHAIN_PASSWORD"] = pwd
+
+  sh("security delete-keychain #{name.shellescape} 2>/dev/null || true")
+  create_keychain(
+    name: name,
+    password: pwd,
+    default_keychain: true,
+    unlock: true,
+    timeout: 0,
+    lock_when_sleeps: false,
+    add_to_search_list: true
+  )
+end
+
 before_all do |lane, options|
-  # Create a dedicated, unlocked keychain on any CI (not just CircleCI) so that
-  # match installs certs there and codesign/productsign can access the private
-  # keys non-interactively. Without this, codesign hangs on GitHub Actions
-  # waiting for keychain authorization during build_app/build_mac_app.
-  setup_circle_ci if is_ci
+  setup_ci_keychain if is_ci
 
   # Write the App Store Connect API key from the APPLE_AUTHKEY env var so the
   # asc_api_key helper can load it by file path (key_filepath avoids the
