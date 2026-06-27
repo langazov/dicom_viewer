@@ -75,12 +75,16 @@ uploading.
 
 ### CI
 
-The `Deploy to App Store` workflow (`.github/workflows/appstore.yml`) runs the
-lanes on a macOS runner. It triggers on `v*` tags (both iOS and macOS beta) or
-manually via `workflow_dispatch`, where you choose the lane (`beta`/`release`)
-and platforms (`ios`, `mac`, or both).
+- **App Store** (iOS + macOS) — `Deploy to App Store` workflow
+  (`.github/workflows/appstore.yml`) runs the `ios`/`mac` lanes on a macOS runner.
+  Triggers on `v*` tags (both beta) or manual `workflow_dispatch` (choose lane
+  `beta`/`release` and platforms `ios`/`mac`).
+- **Google Play** (Android) — `Deploy to Google Play` workflow
+  (`.github/workflows/google-play.yml`) runs the `android` lane on an Ubuntu
+  runner. Triggers on `v*` tags (`beta`) or manual `workflow_dispatch` (choose
+  lane `beta`/`release`).
 
-### Required environment / secrets
+### Required environment / secrets — App Store (iOS + macOS)
 
 Copy `fastlane/.env.example` to `fastlane/.env` for local runs (the `.env` file
 is gitignored). For CI, set these repository secrets:
@@ -104,6 +108,25 @@ profile-creation rights) so fastlane can upload builds and let match generate th
 > `eu.imsc.dicomviewer` (run locally with `bundle exec fastlane ios
 > sync_certificates` / `mac sync_certificates`, or let CI generate it). The
 > bundle id must be registered (or registrable) in the Apple Developer portal.
+
+### Required environment / secrets — Google Play (Android)
+
+The Android app builds as package `eu.imsc.dicomviewer` and is signed with a
+release upload key read from `android/key.properties` (the file is gitignored).
+Generate a Play Console service account + upload keystore, then set:
+
+| Secret | Value |
+|---|---|
+| `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Play Console service account JSON key (raw contents) |
+| `ANDROID_KEYSTORE_BASE64` | base64 of the release upload keystore (`.jks`) |
+| `ANDROID_KEYSTORE_PASSWORD` | keystore password |
+| `ANDROID_KEY_ALIAS` | key alias inside the keystore |
+| `ANDROID_KEY_PASSWORD` | password for the key alias |
+
+The service account needs the right to upload to the `internal` track. Create the
+service account JSON at Play Console → Setup → API access; create the upload
+keystore with `keytool` and register its cert with the app's signing key in Play
+Console → App signing.
 
 ## Development plan
 
