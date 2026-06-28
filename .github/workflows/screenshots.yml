@@ -1,0 +1,69 @@
+name: App Store Screenshots
+
+# Captures iOS App Store screenshots with `fastlane snapshot` (XCUITest on
+# simulators) and uploads them to App Store Connect via `deliver`.
+#
+# Required repository secrets (same as appstore.yml):
+#   APPLE_TEAM_ID   Apple Developer Team ID
+#   ASC_ISSUER_ID   App Store Connect API issuer ID
+#   ASC_KEY_ID      App Store Connect API key ID
+#   APPLE_AUTHKEY   .p8 contents (base64 PEM or raw PEM with literal \n)
+
+on:
+  workflow_dispatch:
+    inputs:
+      step:
+        description: 'What to run'
+        required: true
+        default: 'capture+upload'
+        type: choice
+        options:
+          - capture+upload
+          - capture-only
+          - upload-only
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.41.9'
+
+jobs:
+  screenshots:
+    name: ios screenshots
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      IOS_BUNDLE_ID: eu.imsc.dicomviewer
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      APPLE_AUTHKEY: ${{ secrets.APPLE_AUTHKEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "$(find /Applications -maxdepth 1 -name 'Xcode*.app' | sort -V | tail -n1)/Contents/Developer"
+          xcrun xcodebuild -version
+      - name: Capture screenshots (snapshot)
+        if: ${{ github.event.inputs.step != 'upload-only' }}
+        run: bundle exec fastlane ios capture_screenshots
+      - name: Upload screenshots (deliver)
+        if: ${{ github.event.inputs.step != 'capture-only' }}
+        run: bundle exec fastlane ios upload_screenshots
+      - name: Store screenshots artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-screenshots
+          path: fastlane/screenshots
+          if-no-files-found: ignore

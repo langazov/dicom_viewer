@@ -1,0 +1,1 @@
+Initial App Store release with local DICOM import, study and series browsing, 2D slice viewing, MPR views, 3D volume viewing, metadata inspection, and image adjustment tools.

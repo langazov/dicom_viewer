@@ -1,0 +1,30 @@
+# Snapfile — fastlane snapshot (iOS App Store screenshots)
+# Capture: bundle exec fastlane ios capture_screenshots
+# Upload:  bundle exec fastlane ios upload_screenshots
+
+# Devices covering the App Store's required display sizes.
+#   iPhone 15 Pro Max  -> 6.7" (required)
+#   iPad Pro 12.9"     -> 13"/12.9" (required if iPad is supported)
+devices([
+  "iPhone 15 Pro Max",
+  "iPad Pro (12.9-inch) (6th generation)"
+])
+
+languages([
+  "en-US"
+])
+
+# UITest scheme (builds Runner + drives RunnerUITests).
+scheme("RunnerUITests")
+
+# Where snapshot writes <lang>/<device>/<name>.png — deliver reads from here.
+output_directory("./fastlane/screenshots")
+
+# Recapture from scratch every run.
+clear_previous_screenshots(true)
+
+# Fixed 9:41 status bar, full battery/reception.
+override_status_bar(true)
+
+# Stop after the first failing device/language combo so CI fails fast.
+stop_after_first_error(true)

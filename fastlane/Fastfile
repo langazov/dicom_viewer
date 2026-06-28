@@ -261,6 +261,35 @@ platform :ios do
     )
     UI.success("iOS #{app_version} submitted to App Store")
   end
+
+  desc "Capture iOS App Store screenshots via fastlane snapshot"
+  lane :capture_screenshots do
+    sh("flutter pub get", chdir: "..")
+    cocoapods(podfile: "ios/Podfile", use_bundle_exec: true)
+    # Reads devices/languages/output from fastlane/Snapfile. Runs the
+    # RunnerUITests XCUITest on each simulator and writes PNGs to
+    # fastlane/screenshots/<lang>/<device>/.
+    snapshot
+  end
+
+  desc "Upload screenshots (+ metadata) to App Store Connect — no binary upload"
+  lane :upload_screenshots do
+    deliver(
+      api_key: asc_api_key,
+      app_identifier: ENV["IOS_BUNDLE_ID"] || "eu.imsc.dicomviewer",
+      platform: "ios",
+      skip_binary_upload: true,
+      skip_screenshots: false,
+      # Screenshots only by default — flip to false to also push metadata from
+      # fastlane/metadata/ (make sure it's complete first, it overwrites ASC).
+      skip_metadata: true,
+      force: true,
+      submit_for_review: false,
+      run_precheck_before_submit: false,
+      precheck_include_in_app_purchases: false
+    )
+    UI.success("iOS screenshots uploaded to App Store Connect")
+  end
 end
 
 # ── macOS ─────────────────────────────────────────────────────────────────────

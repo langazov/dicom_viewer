@@ -1,0 +1,8 @@
+# Deliverfile — fastlane deliver (App Store Connect metadata + screenshots)
+# Upload: bundle exec fastlane ios upload_screenshots
+
+app_identifier(ENV["IOS_BUNDLE_ID"] || "eu.imsc.dicomviewer")
+username(ENV["APPLE_ID"] || "langazov@gmail.com")
+
+# Screenshots and metadata live in their default fastlane/ subfolders, so no
+# explicit paths are needed here.
