@@ -32,6 +32,12 @@
 	<string>public.app-category.utilities</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Dicom Viewer requests camera access so you can capture and import images into the app for viewing and analysis.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Dicom Viewer requests photo library access so you can import medical images into the app and save screenshots or rendered views back to your library.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Dicom Viewer may use your location to annotate imported images with relevant metadata.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
