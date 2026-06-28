@@ -2,14 +2,9 @@
 # Capture: bundle exec fastlane ios capture_screenshots
 # Upload:  bundle exec fastlane ios upload_screenshots
 
-# Devices covering the App Store's required display sizes.
-#   iPhone 16 Pro Max -> 6.9" (required; available on GitHub macOS runners)
-#   iPad Pro 13" (M4)  -> 13" (required if iPad is supported)
-#   Verify names on the runner with: xcrun simctl list devices available
-devices([
-  "iPhone 16 Pro Max",
-  "iPad Pro 13-inch (M4)"
-])
+# Devices are resolved at runtime by `snapshot_devices_for_run` in the Fastfile
+# (newest available iPhone Pro Max + iPad Pro 13"), so this lane survives GitHub
+# runner image updates. Verify what's present with: xcrun simctl list devices available
 
 languages([
   "en-US"
