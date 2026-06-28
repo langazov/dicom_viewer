@@ -235,7 +235,9 @@ platform :ios do
     upload_to_testflight(
       api_key: asc_api_key,
       app_identifier: ENV["IOS_BUNDLE_ID"] || "eu.imsc.dicomviewer",
-      skip_waiting_for_build_processing: true,
+      # Wait for Apple's processing so the job fails (with the reason) if the
+      # build is rejected during processing instead of silently vanishing.
+      skip_waiting_for_build_processing: false,
       distribute_external: false,
       notify_external_testers: false
     )
@@ -339,7 +341,9 @@ platform :mac do
       api_key: asc_api_key,
       app_identifier: ENV["MAC_BUNDLE_ID"] || ENV["IOS_BUNDLE_ID"] || "eu.imsc.dicomviewer",
       app_platform: "osx",
-      skip_waiting_for_build_processing: true,
+      # Wait for Apple's processing so the job fails (with the reason) if the
+      # build is rejected during processing instead of silently vanishing.
+      skip_waiting_for_build_processing: false,
       distribute_external: false,
       notify_external_testers: false
     )
