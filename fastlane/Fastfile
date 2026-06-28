@@ -128,17 +128,25 @@ end
 
 # Pick snapshot devices that actually exist on this machine, so the lane doesn't
 # break when GitHub's macOS runner image rolls to newer simulator runtimes.
-# Prefers the newest iPhone "Pro Max" (6.7"/6.9") and newest iPad Pro 13".
+#
+# Default: iPhone "Pro Max" only (6.7"/6.9") — the App Store's required primary
+# size. snapshot rebuilds the Flutter app per device, so 1 device roughly halves
+# the runtime. Set SNAPSHOT_INCLUDE_IPAD=true to also capture the iPad Pro 13".
 def snapshot_devices_for_run
   require "json"
   names = JSON.parse(`xcrun simctl list devices available -j`)
     .fetch("devices", {}).values.flatten
     .map { |d| d["name"] }.compact.uniq.sort
+  devices = []
   iphone = names.select { |n| n =~ /\AiPhone \d+.*Pro Max\z/ }.last ||
            names.select { |n| n.start_with?("iPhone") }.last
-  ipad = names.select { |n| n =~ /\AiPad Pro 13/ }.last ||
-         names.select { |n| n.start_with?("iPad") }.last
-  [iphone, ipad].compact.uniq.tap { |d| UI.user_error!("No iPhone simulator available on this runner") if d.empty? }
+  devices << iphone if iphone
+  if ENV["SNAPSHOT_INCLUDE_IPAD"] == "true"
+    ipad = names.select { |n| n =~ /\AiPad Pro 13/ }.last ||
+           names.select { |n| n.start_with?("iPad") }.last
+    devices << ipad if ipad
+  end
+  devices.compact.uniq.tap { |d| UI.user_error!("No iPhone simulator available on this runner") if d.empty? }
 end
 
 before_all do |lane, options|
@@ -289,7 +297,7 @@ platform :ios do
     devices = snapshot_devices_for_run
     workspace = File.expand_path("ios/Runner.xcworkspace", File.join(__dir__, ".."))
     UI.message("snapshot devices: #{devices.inspect}")
-    snapshot(devices: devices, workspace: workspace)
+    snapshot(devices: devices, workspace: workspace, erase_simulator: false)
   end
 
   desc "Upload screenshots (+ metadata) to App Store Connect — no binary upload"

@@ -21,6 +21,14 @@ on:
           - capture+upload
           - capture-only
           - upload-only
+      include_ipad:
+        description: 'Also capture iPad Pro 13" (adds a 2nd device build)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 permissions:
   contents: read
@@ -32,13 +40,17 @@ jobs:
   screenshots:
     name: ios screenshots
     runs-on: macos-latest
-    timeout-minutes: 60
+    # snapshot rebuilds the Flutter app per device; default (iPhone only) lands
+    # ~8-12 min. Cap well below the prior 30+ min runaway.
+    timeout-minutes: 25
     env:
       IOS_BUNDLE_ID: eu.imsc.dicomviewer
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       APPLE_AUTHKEY: ${{ secrets.APPLE_AUTHKEY }}
+      # Set to 'true' to also capture the iPad Pro 13" (adds a 2nd device build).
+      SNAPSHOT_INCLUDE_IPAD: ${{ github.event.inputs.include_ipad || 'false' }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -46,6 +58,14 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: pods-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('ios/Podfile.lock', 'ios/Podfile') }}
+          restore-keys: pods-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
