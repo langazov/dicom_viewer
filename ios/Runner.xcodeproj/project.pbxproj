@@ -153,6 +153,7 @@
 				97B50AD26693F93F61DE84DF /* Info.plist */,
 			);
 			name = UITests;
+			path = UITests;
 			sourceTree = "<group>";
 		};
 		9740EEB11CF90186004384FC /* Flutter */ = {
