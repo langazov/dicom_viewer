@@ -263,7 +263,7 @@ platform :ios do
   end
 
   desc "Capture iOS App Store screenshots via fastlane snapshot"
-  lane :capture_screenshots do
+  lane :screenshots do
     sh("flutter pub get", chdir: "..")
     cocoapods(podfile: "ios/Podfile", use_bundle_exec: true)
     # Reads devices/languages/output from fastlane/Snapfile. Runs the

@@ -56,7 +56,7 @@ jobs:
           xcrun xcodebuild -version
       - name: Capture screenshots (snapshot)
         if: ${{ github.event.inputs.step != 'upload-only' }}
-        run: bundle exec fastlane ios capture_screenshots
+        run: bundle exec fastlane ios screenshots
       - name: Upload screenshots (deliver)
         if: ${{ github.event.inputs.step != 'capture-only' }}
         run: bundle exec fastlane ios upload_screenshots

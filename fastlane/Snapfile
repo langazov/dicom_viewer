@@ -3,11 +3,12 @@
 # Upload:  bundle exec fastlane ios upload_screenshots
 
 # Devices covering the App Store's required display sizes.
-#   iPhone 15 Pro Max  -> 6.7" (required)
-#   iPad Pro 12.9"     -> 13"/12.9" (required if iPad is supported)
+#   iPhone 16 Pro Max -> 6.9" (required; available on GitHub macOS runners)
+#   iPad Pro 13" (M4)  -> 13" (required if iPad is supported)
+#   Verify names on the runner with: xcrun simctl list devices available
 devices([
-  "iPhone 15 Pro Max",
-  "iPad Pro (12.9-inch) (6th generation)"
+  "iPhone 16 Pro Max",
+  "iPad Pro 13-inch (M4)"
 ])
 
 languages([
