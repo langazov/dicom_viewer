@@ -309,6 +309,7 @@ platform :mac do
       # fails with "No Team Found in Archive". export_team_id writes teamID into
       # the plist and fixes it.
       export_team_id: team,
+      codesigning_identity: "Apple Distribution",
       xcargs: "CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=#{team} 'PROVISIONING_PROFILE_SPECIFIER=match AppStore #{app_id}'"
     )
 
