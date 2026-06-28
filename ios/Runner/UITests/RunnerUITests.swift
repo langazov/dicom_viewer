@@ -7,16 +7,19 @@ import XCTest
 final class RunnerUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
+    }
+
+    // setupSnapshot()/snapshot() are @MainActor-isolated in modern
+    // SnapshotHelper, so the test runs on the main actor.
+    @MainActor
+    func testCaptureScreenshots() throws {
         let app = XCUIApplication()
         setupSnapshot(app)
         app.launch()
-    }
 
-    /// Flutter renders to a single canvas and does not expose native
-    /// accessibility identifiers to XCUITest by default, so we capture after a
-    /// short settle delay rather than waiting on a specific element.
-    func testCaptureScreenshots() throws {
-        // 01 — main viewer (empty state with toolbar + import action)
+        // Flutter renders to a single canvas and does not expose native
+        // accessibility identifiers to XCUITest by default, so we capture after
+        // a short settle delay rather than waiting on a specific element.
         sleep(8)
         snapshot("01_viewer")
     }
