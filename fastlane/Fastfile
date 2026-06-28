@@ -310,7 +310,7 @@ platform :mac do
       # the plist and fixes it.
       export_team_id: team,
       codesigning_identity: "Apple Distribution",
-      xcargs: "CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=#{team} 'PROVISIONING_PROFILE_SPECIFIER=match AppStore #{app_id}'"
+      xcargs: "CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=#{team} 'PROVISIONING_PROFILE_SPECIFIER=match AppStore #{app_id} macos'"
     )
 
     pkg_path = Dir.glob(File.expand_path("build/macos/output/*.pkg")).first
