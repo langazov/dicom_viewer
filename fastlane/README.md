@@ -68,6 +68,14 @@ Build and submit to App Store for review
 
 Sync Mac certificates and provisioning profiles via Match
 
+### mac regenerate_certificates
+
+```sh
+[bundle exec] fastlane mac regenerate_certificates
+```
+
+Regenerate Mac signing cert + profile (run LOCALLY, not on CI)
+
 ### mac build
 
 ```sh

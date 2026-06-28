@@ -286,6 +286,30 @@ platform :mac do
     match(match_params)
   end
 
+  desc "Regenerate Mac signing cert + profile (run LOCALLY, not on CI)"
+  lane :regenerate_certificates do |options|
+    UI.user_error!("regenerate_certificates must run locally (not CI) — it rewrites the match repo") if is_ci
+
+    match_params = {
+      type: options[:type] || "appstore",
+      readonly: false,
+      # Force match to create a fresh cert AND profile that reference each other,
+      # fixing "provisioning profile doesn't include signing certificate" caused by
+      # a stale profile / duplicate certs. Leaves the previous certs orphaned —
+      # revoke them in the Apple Developer portal afterwards.
+      force: true,
+      platform: "macos",
+      app_identifier: ENV["MAC_BUNDLE_ID"] || ENV["IOS_BUNDLE_ID"] || "eu.imsc.dicomviewer",
+      additional_cert_types: ["mac_installer_distribution"],
+      api_key: asc_api_key
+    }
+    match_params[:git_basic_authorization] = ENV["MATCH_GIT_BASIC_AUTHORIZATION"] if ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
+    match_params.merge!(match_keychain_params)
+    match(match_params)
+
+    UI.success("Regenerated Mac cert + profile in the match repo. Revoke any orphaned certs in the Apple Developer portal.")
+  end
+
   desc "Build the Flutter macOS app (release, signed .pkg)"
   lane :build do
     sh("flutter pub get", chdir: "..")
@@ -313,7 +337,7 @@ platform :mac do
       xcargs: "CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=#{team} 'PROVISIONING_PROFILE_SPECIFIER=match AppStore #{app_id} macos'"
     )
 
-    pkg_path = Dir.glob(File.expand_path("build/macos/output/*.pkg")).first
+    pkg_path = Dir.glob(File.join(__dir__, "..", "build", "macos", "output", "*.pkg")).first
     UI.user_error!("No .pkg produced in build/macos/output") unless pkg_path
     UI.success("macOS package built: #{pkg_path}")
   end
@@ -359,7 +383,7 @@ platform :mac do
       api_key: asc_api_key,
       app_identifier: ENV["MAC_BUNDLE_ID"] || ENV["IOS_BUNDLE_ID"] || "eu.imsc.dicomviewer",
       platform: "osx",
-      pkg: Dir.glob(File.expand_path("build/macos/output/*.pkg")).first,
+      pkg: Dir.glob(File.join(__dir__, "..", "build", "macos", "output", "*.pkg")).first,
       force: true,
       skip_screenshots: true,
       skip_metadata: true,
