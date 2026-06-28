@@ -287,8 +287,9 @@ platform :ios do
     # Runs the RunnerUITests XCUITest on each simulator and writes PNGs to
     # fastlane/screenshots/<lang>/<device>/.
     devices = snapshot_devices_for_run
+    workspace = File.expand_path("ios/Runner.xcworkspace", File.join(__dir__, ".."))
     UI.message("snapshot devices: #{devices.inspect}")
-    snapshot(devices: devices)
+    snapshot(devices: devices, workspace: workspace)
   end
 
   desc "Upload screenshots (+ metadata) to App Store Connect — no binary upload"
